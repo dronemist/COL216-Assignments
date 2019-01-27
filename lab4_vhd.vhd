@@ -29,10 +29,15 @@ signal opcode : std_logic_vector(3 downto 0);
 signal rn,rd,RotSpec,rm: std_logic_vector(3 downto 0);
 signal imm8:std_logic_vector(7 downto 0);
 type vector_of_vector is array (0 to 15) of std_logic_vector(31 downto 0);
+type instr_class_type is (DP, DT, branch, unknown);
+type i_decoded_type is (add,sub,cmp,mov,ldr,str,beq,bne,b,unknown);
 signal instr_class : instr_class_type;
+signal i_decoded: i_decoded_type;
 signal to_be_added:std_logic_vector(31 downto 0);
+signal Z_flag : std_logic;
+signal register_file: vector_of_vector;
+signal imm24:std_logic_vector(23 downto 0);
 begin
-
 cond <= instruction(31 downto 28);
 F_field <= instruction(27 downto 26);
 I_bit <= instruction(25);
@@ -45,6 +50,7 @@ rd <= instruction(15 downto 12);
 rm <= instruction(3 downto 0);
 RotSpec <= instruction(11 downto 8);
 imm8 <= instruction(7 downto 0);
+imm24 <= instruction(23 downto 0);
 to_be_added <= X"000000" & imm8 when I_bit = '1'
                 else register_file(to_integer(unsigned(rm)));
 with F_field select instr_class <= DP when "00",
@@ -65,6 +71,7 @@ with F_field select instr_class <= DP when "00",
 Process(clk)
 begin
     if rising_edge(clk) then
+        register_file(15) <= std_logic_vector(unsigned(register_file(15))) + std_logic_vector(unsigned("100"));--r15 stores the program counter
         case i_decoded is
             when add =>
                 register_file(to_integer(unsigned(rd))) <= std_logic_vector(unsigned(register_file(to_integer(unsigned(rn))))) + std_logic_vector(unsigned(to_be_added));
@@ -73,11 +80,25 @@ begin
             when mov =>
                 register_file(to_integer(unsigned(rd))) <= std_logic_vector(unsigned(to_be_added));
             when cmp =>
-
+                if register_file(to_integer(unsigned(rd))) = std_logic_vector(unsigned(to_be_added)) then
+                    Z_flag <= '1';
+                else
+                    Z_flag <= '0';    
+                end if ;
+            when b => 
+                register_file(15) <= "000000" & imm24 & "00";
+            when bne =>
+                if Z_flag = '0' then
+                    register_file(15) <= "000000" & imm24 & "00";
+                end if;
+            when beq => 
+                if Z_flag = '1' then
+                    register_file(15) <= "000000" & imm24 & "00";
+                end if ;                
         end case;
     end if;
 end process;
-
+add_to_program_m <= register_file(15);
 --Process()
 --begin
 
