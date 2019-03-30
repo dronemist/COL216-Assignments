@@ -7,7 +7,7 @@ use IEEE.NUMERIC_STD.ALL;
 use ieee.std_logic_signed.all;
 package common_type is
 type instr_class_type is (DP, DT, branch,halt, unknown);
-type i_decoded_type is (add,sub,cmp,mov,and_instr,eor,orr,bic,adc,sbc,rsb,rsc,cmn,tst,teq,movn,ldr,str,ldrsh,strsh,beq,bne,b,unknown);
+type i_decoded_type is (add,sub,cmp,mov,and_instr,eor,orr,bic,adc,sbc,rsb,rsc,cmn,tst,teq,movn,ldr,str,beq,bne,b,unknown);
 type execution_state_type is (initial,onestep,oneinstr,cont,done);
 type control_state_type is (fetch,decode,decode_shift,arith,addr,brn,halt,res2RF,mem_wr,mem_rd,mem2RF);
 type alu_op_type is(op_and,op_xor,sub,rsb,add,adc,sbc,rsc,orr,mov,bic,mvn);
@@ -55,11 +55,13 @@ signal RF_wr_1_we : std_logic;
 signal RF_pc_data_in: std_logic_vector(31 downto 0);
 signal RF_pc_wea,I_bit,U_bit, S_bit: std_logic;
 signal instr_class : instr_class_type;
-signal ld_bit,green_flag,data_mem_we : std_logic;
+signal ld_bit,green_flag,data_mem_0_we,data_mem_1_we,data_mem_2_we,data_mem_3_we : std_logic;
 signal red_flag : std_logic;
 signal imm8:std_logic_vector(7 downto 0);
 signal imm12:std_logic_vector(11 downto 0);
-signal data_mem_data_in,data_mem_add_to_data_m,data_mem_data_out  : std_logic_vector(31 downto 0);
+signal data_mem_0_data_in,data_mem_0_data_out,data_mem_1_data_in,data_mem_1_data_out,data_mem_2_data_in,data_mem_2_data_out,data_mem_3_data_in,data_mem_3_data_out: std_logic_vector(7 downto 0);  
+-- 0 denotes the least significant 8 bits of data_memory
+signal data_mem_add_to_data_m : std_logic_vector(31 downto 0);
 signal shifter_input : std_logic_vector(31 downto 0);
 signal shift_type : std_logic_vector(1 downto 0);
 signal type_of_shift : std_logic;
@@ -71,10 +73,10 @@ signal z_flag, n_flag, c_flag, v_flag : std_logic;
 component data_memory
         Port (
             a: in std_logic_vector(7 downto 0);
-            d: in std_logic_vector(31 downto 0);
+            d: in std_logic_vector(7 downto 0);
             clk: in std_logic;
             we: in std_logic;
-            spo: out std_logic_vector(31 downto 0)
+            spo: out std_logic_vector(7 downto 0)
         );
 end component;
 component program_memory
@@ -146,15 +148,38 @@ component final_shifter_rotator
     );
 end component;
 begin
-data_memory_instance_1: data_memory port map(
+data_memory_instance_0: data_memory port map( 
             a => data_mem_add_to_data_m(7 downto 0),
-            d => data_mem_data_out,
+            d => data_mem_0_data_out,
+            clk => clk,
+            we => data_mem_we,
+            spo => data_mem_data_in
+        );
+		
+data_memory_instance_1: data_memory port map( 
+            a => data_mem_add_to_data_m(7 downto 0),
+            d => data_mem_1_data_out,
             clk => clk,
             we => data_mem_we,
             spo => data_mem_data_in
         );
 
-        d = d1 & d2
+data_memory_instance_2: data_memory port map( 
+            a => data_mem_add_to_data_m(7 downto 0),
+            d => data_mem_2_data_out,
+            clk => clk,
+            we => data_mem_we,
+            spo => data_mem_data_in
+        );
+		
+data_memory_instance_3: data_memory port map( 
+            a => data_mem_add_to_data_m(7 downto 0),
+            d => data_mem_3_data_out,
+            clk => clk,
+            we => data_mem_we,
+            spo => data_mem_data_in
+        );
+		
 program_memory_instance: program_memory port map(
                            a => PC(9 downto 2),
                            spo=> instruction
