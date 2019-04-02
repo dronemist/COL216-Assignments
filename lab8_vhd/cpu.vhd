@@ -107,7 +107,8 @@ component ALU_and_flags
              carry,s_bit: in std_logic;
              carry_from_shifter : in std_logic;
              op_to_be_performed :in alu_op_type;
-             shift_amount : std_logic_vector(4 downto 0);
+             shift_amount : in std_logic_vector(4 downto 0);
+             wea:in std_logic;
              z_flag_output,n_flag_output,v_flag_output,c_flag_output: out std_logic;
              result:out std_logic_vector(31 downto 0)
         );
@@ -165,6 +166,7 @@ ALU_instance: ALU_and_flags port map(
                         s_bit => s_bit,
                         carry_from_shifter => shifter_carry_out,
                         shift_amount => shift_amount,
+                        wea => alu_flag_wea,
                         z_flag_output => z_flag,
                         n_flag_output => n_flag,
                         c_flag_output => c_flag,
@@ -265,14 +267,14 @@ alu_op_2 <=  x"00000000" when (control_state = fetch)
             
 alu_carry <= '1' when ((control_state = fetch) or (control_state = brn))
             else '0';
-alu_flag_wea <= '1' when (i_decoded = cmp and control_state = arith)
+alu_flag_wea <= '1' when control_state = arith
                 else '0';
 data_mem_add_to_data_m <= res when ((control_state = mem_wr) or (control_state = mem_rd));
 
 shifter_input <= B_reg when control_state = decode_shift else X"00000000";
 
 
-shift_amount <= (RF_rd_2_data_out(3 downto 0) & '0') when type_of_shift = '1' and control_state = decode_shift
+shift_amount <= (RF_rd_2_data_out(4 downto 0)) when type_of_shift = '1' and control_state = decode_shift
             else IR(11 downto 7) when type_of_shift = '0' and control_state = decode_shift
             else "00000";
 

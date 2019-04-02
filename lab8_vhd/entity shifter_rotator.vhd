@@ -280,12 +280,12 @@ begin
 	processed_input_signal <= bit_reverse(shifter_input) when shift_type = "00"
 								else shifter_input;
 	shifter_output <=  bit_reverse(processed_output_signal) when shift_type = "00"
-								else shifter_input;
-	shift_rot:entity work.shifter_rotator_1(shifter_rotator_1_arch) PORT MAP(processed_input_signal, shift_type, select_bits(4), shift_1_out, carry_in, shift_1_carry_out);
-	shift_rot1:entity work.shifter_rotator_2(shifter_rotator_2_arch) PORT MAP(shift_1_out, shift_type, select_bits(3), shift_2_out, shift_1_carry_out, shift_2_carry_out);
+								else processed_output_signal;
+	shift_rot:entity work.shifter_rotator_1(shifter_rotator_1_arch) PORT MAP(processed_input_signal, shift_type, select_bits(0), shift_1_out, carry_in, shift_1_carry_out);
+	shift_rot1:entity work.shifter_rotator_2(shifter_rotator_2_arch) PORT MAP(shift_1_out, shift_type, select_bits(1), shift_2_out, shift_1_carry_out, shift_2_carry_out);
 	shift_rot2:entity work.shifter_rotator_4(shifter_rotator_4_arch) PORT MAP(shift_2_out, shift_type, select_bits(2), shift_4_out, shift_2_carry_out, shift_4_carry_out);
-	shift_rot3:entity work.shifter_rotator_8(shifter_rotator_8_arch) PORT MAP(shift_4_out, shift_type, select_bits(1), shift_8_out, shift_4_carry_out, shift_8_carry_out);
-	shift_rot4:entity work.shifter_rotator_16(shifter_rotator_16_arch) PORT MAP(shift_8_out, shift_type, select_bits(0), processed_output_signal, shift_8_carry_out, carry_out);
+	shift_rot3:entity work.shifter_rotator_8(shifter_rotator_8_arch) PORT MAP(shift_4_out, shift_type, select_bits(3), shift_8_out, shift_4_carry_out, shift_8_carry_out);
+	shift_rot4:entity work.shifter_rotator_16(shifter_rotator_16_arch) PORT MAP(shift_8_out, shift_type, select_bits(4), processed_output_signal, shift_8_carry_out, carry_out);
 	
 
 end architecture;

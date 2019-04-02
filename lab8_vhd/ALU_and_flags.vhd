@@ -38,7 +38,8 @@ entity ALU_and_flags is
          carry,s_bit: in std_logic;
          carry_from_shifter : in std_logic;
          op_to_be_performed :in alu_op_type;
-         shift_amount : std_logic_vector(4 downto 0);
+         shift_amount :in std_logic_vector(4 downto 0);
+         wea: in std_logic;
          z_flag_output,n_flag_output,v_flag_output,c_flag_output: out std_logic;
          result:out std_logic_vector(31 downto 0)
    );
@@ -63,12 +64,12 @@ res_temp <= std_logic_vector(signed(op_1)) AND std_logic_vector(signed(op_2)) wh
        else std_logic_vector(signed(op_1)) AND (not(std_logic_vector(signed(op_2)))) when ( op_to_be_performed = bic )       
        else (not(std_logic_vector(signed(op_2)))) when ( op_to_be_performed = mvn )       
        else std_logic_vector(signed(op_2)) when ( op_to_be_performed = mov );       
-z_flag <= '1' when res_temp = X"00000000" AND s_bit = '1'
-       else '0' when (not(res_temp = X"00000000")) and s_bit = '1';
-n_flag <= res_temp(31) when s_bit = '1';   
-c_flag <= c_32 when (s_bit = '1' and (op_to_be_performed = sub or op_to_be_performed = rsb or op_to_be_performed = add or op_to_be_performed = adc or op_to_be_performed = sbc or op_to_be_performed = rsc))
-              else carry_from_shifter when s_bit = '1' and not(shift_amount = "00000");
-v_flag <= (c_32 xor c_31) when s_bit = '1';         
+z_flag <= '1' when res_temp = X"00000000" AND s_bit = '1' and wea ='1'
+       else '0' when (not(res_temp = X"00000000")) and s_bit = '1' and wea ='1';
+n_flag <= res_temp(31) when s_bit = '1' and wea ='1';   
+c_flag <= c_32 when (s_bit = '1' and wea ='1' and (op_to_be_performed = sub or op_to_be_performed = rsb or op_to_be_performed = add or op_to_be_performed = adc or op_to_be_performed = sbc or op_to_be_performed = rsc))
+              else carry_from_shifter when s_bit = '1' and not(shift_amount = "00000") and wea ='1';
+v_flag <= (c_32 xor c_31) when s_bit = '1' and wea ='1';         
 z_flag_output <= z_flag;       
 c_flag_output <= c_flag;       
 n_flag_output <= n_flag;       
