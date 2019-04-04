@@ -44,8 +44,10 @@ signal F_field:std_logic_vector(1 downto 0);
 signal P_bit,B_bit,W_bit,I_bit,S_bit,L_bit : std_logic;
 signal opcode,cond : std_logic_vector(3 downto 0);
 signal opc : std_logic_vector(1 downto 0);
+signal sh : std_logic_vector(1 downto 0);
 signal instr_class_signal:instr_class_type;
 begin
+sh <= instruction(6 downto 5); 
 F_field <= instruction(27 downto 26);
 P_bit <= instruction(24);
 B_bit <= instruction(22);
@@ -79,10 +81,14 @@ i_decoded <=
     else mov when instr_class_signal = DP and opcode = "1101"
     else bic when instr_class_signal = DP and opcode = "1110"
     else movn when instr_class_signal = DP and opcode = "1111"
-    else ldrsh when instr_class_signal = DT and F_field = "00" and L_bit = '1'
-    else strsh when instr_class_signal = DT and F_field = "00" and L_bit = '0'
-    else ldr when instr_class_signal = DT and L_bit = '1' and cond = "1110" and I_bit = '0' and P_bit = '1' and W_bit = '0' and B_bit = '0'
-    else str when instr_class_signal = DT and L_bit = '0' and cond = "1110" and I_bit = '0' and P_bit = '1'and W_bit = '0' and B_bit = '0'
+    else ldrsh when instr_class_signal = DT and F_field = "00" and L_bit = '1' and sh = "11"
+    else ldrh when instr_class_signal = DT and F_field = "00" and L_bit = '1' and sh = "01"
+    else ldrsb when instr_class_signal = DT and F_field = "00" and L_bit = '1' and sh = "10"
+    else strh when instr_class_signal = DT and F_field = "00" and L_bit = '0' and sh = "01"
+    else ldr when instr_class_signal = DT and F_field ="01" and L_bit = '1' and cond = "1110" and ((P_bit='0' and W_bit = '0') or P_bit = '1') and B_bit = '0'
+    else str when instr_class_signal = DT and F_field ="01" and L_bit = '0' and cond = "1110" and ((P_bit='0' and W_bit = '0') or P_bit = '1') and B_bit = '0'
+    else ldrb when instr_class_signal = DT and F_field ="01" and L_bit = '1' and cond = "1110" and ((P_bit='0' and W_bit = '0') or P_bit = '1') and B_bit = '1'
+    else strb when instr_class_signal = DT and F_field ="01" and L_bit = '0' and cond = "1110" and ((P_bit='0' and W_bit = '0') or P_bit = '1') and B_bit = '1'
     else beq when instr_class_signal = branch and cond = "0000" and opc = "10"
     else bne when instr_class_signal = branch and cond = "0001" and opc = "10"
     else b when instr_class_signal = branch and cond = "1110" and opc = "10"
