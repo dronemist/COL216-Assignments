@@ -41,7 +41,7 @@ end instruction_decoder;
 
 architecture Behavioral of instruction_decoder is
 signal F_field:std_logic_vector(1 downto 0);
-signal P_bit,B_bit,W_bit,I_bit,S_bit,L_bit : std_logic;
+signal P_bit,B_bit,W_bit,I_bit,S_bit,L_bit,A_bit,U_bit : std_logic;
 signal opcode,cond : std_logic_vector(3 downto 0);
 signal opc : std_logic_vector(1 downto 0);
 signal sh : std_logic_vector(1 downto 0);
@@ -51,16 +51,19 @@ sh <= instruction(6 downto 5);
 F_field <= instruction(27 downto 26);
 P_bit <= instruction(24);
 B_bit <= instruction(22);
+U_bit <= instruction(22);
 W_bit <= instruction(21);
 I_bit <= instruction(25);
 L_bit <= instruction(20);
 S_bit <= instruction(20);
+A_bit <= instruction(21);
 opcode <= instruction(24 downto 21);
 cond <= instruction(31 downto 28);
 opc <= instruction(25 downto 24);
 instr_class <= instr_class_signal;  
 instr_class_signal <= halt when instruction = X"00000000"
-               else DT when F_field = "01" or (F_field = "00" and I_bit = '0' and instruction(7) = '1' and (not(instruction(6 downto 5) = "00")) and instruction(4) = '1') 
+               else DP_mull when (F_field = "00" and I_bit = '0' and sh ="00" and instruction(7) = '1' and instruction(4) = '1' and(opcode(3 downto 1)="000" or opcode(3 downto 2)="01"))
+               else DT when F_field = "01" or (F_field = "00" and I_bit = '0' and instruction(7) = '1' and instruction(4) = '1') 
                else DP when F_field = "00"
                else branch when F_field = "10"
                else unknown;               
@@ -81,6 +84,12 @@ i_decoded <=
     else mov when instr_class_signal = DP and opcode = "1101"
     else bic when instr_class_signal = DP and opcode = "1110"
     else movn when instr_class_signal = DP and opcode = "1111"
+    else mul when instr_class_signal = DP_mull and opcode(3 downto 1)="000" and A_bit = '0'
+    else mla when instr_class_signal = DP_mull and opcode(3 downto 1)="000" and A_bit ='1'
+    else smull when instr_class_signal = DP_mull and opcode(3 downto 2)="01" and A_bit ='0' and U_bit = '1'
+    else smlal when instr_class_signal = DP_mull and opcode(3 downto 2)="01" and A_bit ='1' and U_bit = '1'
+    else umull when instr_class_signal = DP_mull and opcode(3 downto 2)="01" and A_bit ='0' and U_bit = '0'
+    else umlal when instr_class_signal = DP_mull and opcode(3 downto 2)="01" and A_bit ='1' and U_bit = '0'
     else ldrsh when instr_class_signal = DT and F_field = "00" and L_bit = '1' and sh = "11"
     else ldrh when instr_class_signal = DT and F_field = "00" and L_bit = '1' and sh = "01"
     else ldrsb when instr_class_signal = DT and F_field = "00" and L_bit = '1' and sh = "10"
