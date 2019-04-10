@@ -7,7 +7,7 @@ use IEEE.NUMERIC_STD.ALL;
 use ieee.std_logic_signed.all;
 package common_type is
 type instr_class_type is (DP, DT, branch,halt, DP_mull, unknown);
-type i_decoded_type is (add,sub,cmp,mov,and_instr,eor,orr,bic,adc,sbc,rsb,rsc,mul,mla,smull,smlal,umull,umlal,cmn,tst,teq,movn,ldr,str,ldrb,strb,ldrsb,ldrh,strh,ldrsh,beq,bne,b,unknown);
+type i_decoded_type is (add,sub,cmp,mov,and_instr,eor,orr,bic,adc,sbc,rsb,rsc,mul,mla,mull,smull,smlal,umull,umlal,cmn,tst,teq,movn,ldr,str,ldrb,strb,ldrsb,ldrh,strh,ldrsh,beq,bne,b,unknown);
 type execution_state_type is (initial,onestep,oneinstr,cont,done);
 type control_state_type is (fetch,decode,decode_shift,arith,mult,alu_mult,res2RF_1,res2RF_2,addr,brn,halt,res2RF,mem_wr,mem_rd,mem2RF);
 type alu_op_type is(op_and,op_xor,sub,rsb,add,adc,sbc,rsc,orr,mov,bic,mvn,mul);
@@ -299,7 +299,7 @@ imm7_4 <= IR(11 downto 8);
 imm3_0 <= IR(3 downto 0); 
 ld_bit <= IR(20);
 I_bit <= IR(25);
-U_bit <= IR(23);
+U_bit <= IR(22);
 S_bit <= IR(20);
 p_bit <= IR(24);
 w_bit <= IR(21);
@@ -323,7 +323,8 @@ alu_op_to_be_performed <= op_and when (((i_decoded = and_instr) or (i_decoded = 
                        else orr when (((i_decoded = orr)) and (control_state = arith) )
                        else mov when (((i_decoded = mov)) and (control_state = arith) )
                        else bic when (((i_decoded = bic)) and (control_state = arith) )
-                       else mvn when (((i_decoded = movn)) and (control_state = arith) );
+                       else mvn when (((i_decoded = movn)) and (control_state = arith) )
+                       else mul when ((instr_class = DP_mull) and (control_state = res2RF_1));
 
 alu_op_1 <= x"000000" & pc(9 downto 2) when ((control_state = fetch) or (control_state = brn))
           else A when ((control_state = arith) or (control_state = addr))
@@ -331,8 +332,8 @@ alu_op_1 <= x"000000" & pc(9 downto 2) when ((control_state = fetch) or (control
 
 alu_op_2 <=  x"00000000" when (control_state = fetch)   --rotSpec assumed as  0000
             else X"000000" & imm8 when ((control_state = arith) and (I_bit = '1'))
-            else D_reg when (((control_state = arith) and (I_bit = '0')) or (control_state = addr and (I_bit = '1')) or (control_state = addr and IR(22) = '1' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh)))
-            else x"000000" & imm7_4 & imm3_0 when (control_state = addr and IR(22) = '0' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh))
+            else D_reg when (((control_state = arith) and (I_bit = '0')) or (control_state = addr and (I_bit = '1')) or (control_state = addr and IR(22) = '0' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh)))
+            else x"000000" & imm7_4 & imm3_0 when (control_state = addr and IR(22) = '1' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh))
             else "00000000000000000000" & imm12 when (control_state = addr and (I_bit = '0'))
             else std_logic_vector(to_signed((to_integer(signed(IR(23 downto 0)))),32)) when (control_state = brn)
             else x"00000000";
@@ -356,7 +357,8 @@ shift_type <= IR(6 downto 5) when control_state = decode_shift;
 
 mult_inp_1 <= A;
 mult_inp_2 <= B_reg;
-signed_mult_and_add <= U_bit;
+signed_mult_and_add <= U_bit when (not (i_decoded = mul) and not(i_decoded = mla))
+                        else '1';
 adder_op_2 <= upper_32_mla_inp_bits & lower_32_mla_inp_bits when i_decoded = smlal or i_decoded = mla or i_decoded = umlal
               else x"0000000000000000";
 upper_32_mla_out_bits <= mla_result(63 downto 32);
@@ -403,7 +405,10 @@ begin
                 mult_output_reg <= mult_output;
                 if i_decoded = smull or i_decoded = smlal or i_decoded = umull or i_decoded = umlal then
                     upper_32_mla_inp_bits <= RF_rd_1_data_out; 
-                else upper_32_mla_inp_bits <= x"00000000";
+                else 
+                    if RF_rd_2_data_out(31) = '0' then upper_32_mla_inp_bits <= x"00000000" ;
+                    else upper_32_mla_inp_bits <= x"ffffffff";
+                    end if;
                 end if;
                 lower_32_mla_inp_bits <= RF_rd_2_data_out;
             when alu_mult =>
@@ -456,10 +461,11 @@ begin
                      data_mem_2_data_out <= B_reg(7 downto 0);
                      data_mem_3_data_out <= B_reg(7 downto 0);
                      case res(1 downto 0) is
-                         when "00" => data_mem_0_we <= '1';
-                         when "01" => data_mem_1_we <= '1';
-                         when "10" => data_mem_2_we <= '1';
-                         when "11" => data_mem_3_we <= '1';
+                         when "00" => data_mem_3_we <= '1';
+                         when "01" => data_mem_2_we <= '1';
+                         when "10" => data_mem_1_we <= '1';
+                         when "11" => data_mem_0_we <= '1';
+                         when others =>
                      end case;
                      
                      when strh => 
@@ -468,8 +474,9 @@ begin
                       data_mem_2_data_out <= B_reg(7 downto 0);
                       data_mem_3_data_out <= B_reg(15 downto 8);
                       case res(1) is
-                       when '0' => data_mem_0_we <= '1'; data_mem_1_we <= '1';
-                       when '1' => data_mem_2_we <= '1'; data_mem_3_we <= '1';
+                       when '1' => data_mem_0_we <= '1'; data_mem_1_we <= '1';
+                       when '0' => data_mem_2_we <= '1'; data_mem_3_we <= '1';
+                       when others =>
                       end case;
                       
                      when str =>
@@ -496,27 +503,31 @@ begin
                     DR <= data_mem_data_in ;
                 elsif i_decoded = ldrb then
                     case res(1 downto 0) is
-                        when "00" => DR <= x"000000" & data_mem_0_data_in;
-                        when "01" => DR <= x"000000" & data_mem_1_data_in;
-                        when "10" => DR <= x"000000" & data_mem_2_data_in;
-                        when "11" => DR <= x"000000" & data_mem_3_data_in;
+                        when "00" => DR <= x"000000" & data_mem_3_data_in;
+                        when "01" => DR <= x"000000" & data_mem_2_data_in;
+                        when "10" => DR <= x"000000" & data_mem_1_data_in;
+                        when "11" => DR <= x"000000" & data_mem_0_data_in;
+                        when others =>
                     end case;
                  elsif i_decoded = ldrh then
                     case res(1) is
-                     when '0' => DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in;
-                     when '1' => DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in;
+                     when '1' => DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in;
+                     when '0' => DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in;
+                     when others =>
                     end case;                     
                  elsif i_decoded = ldrsb then 
                     case res(1 downto 0) is
-                        when "00" => if data_mem_0_data_in(7) = '0' then DR <= x"000000" & data_mem_0_data_in; else DR <= x"ffffff" & data_mem_0_data_in; end if;
-                        when "01" => if data_mem_1_data_in(7) = '0' then DR <= x"000000" & data_mem_1_data_in; else DR <= x"ffffff" & data_mem_1_data_in; end if;
-                        when "10" => if data_mem_2_data_in(7) = '0' then DR <= x"000000" & data_mem_2_data_in; else DR <= x"ffffff" & data_mem_2_data_in; end if;
-                        when "11" => if data_mem_3_data_in(7) = '0' then DR <= x"000000" & data_mem_3_data_in; else DR <= x"ffffff" & data_mem_3_data_in; end if;
+                        when "11" => if data_mem_0_data_in(7) = '0' then DR <= x"000000" & data_mem_0_data_in; else DR <= x"ffffff" & data_mem_0_data_in; end if;
+                        when "10" => if data_mem_1_data_in(7) = '0' then DR <= x"000000" & data_mem_1_data_in; else DR <= x"ffffff" & data_mem_1_data_in; end if;
+                        when "01" => if data_mem_2_data_in(7) = '0' then DR <= x"000000" & data_mem_2_data_in; else DR <= x"ffffff" & data_mem_2_data_in; end if;
+                        when "00" => if data_mem_3_data_in(7) = '0' then DR <= x"000000" & data_mem_3_data_in; else DR <= x"ffffff" & data_mem_3_data_in; end if;
+                        when others =>
                     end case;                   
                  elsif i_decoded = ldrsh then
                     case res(1) is
-                        when '0' => if data_mem_1_data_in(7) = '0' then DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in; else DR <= x"ffff" & data_mem_1_data_in & data_mem_0_data_in; end if;
-                        when '1' => if data_mem_3_data_in(7) = '0' then DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in; else DR <= x"ffff" & data_mem_3_data_in & data_mem_2_data_in; end if;
+                        when '1' => if data_mem_1_data_in(7) = '0' then DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in; else DR <= x"ffff" & data_mem_1_data_in & data_mem_0_data_in; end if;
+                        when '0' => if data_mem_3_data_in(7) = '0' then DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in; else DR <= x"ffff" & data_mem_3_data_in & data_mem_2_data_in; end if;
+                        when others =>
                     end case;                   
                  end if;
             when mem2RF =>

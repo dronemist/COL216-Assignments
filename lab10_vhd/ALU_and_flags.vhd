@@ -66,7 +66,7 @@ res_temp <= std_logic_vector(signed(op_1)) AND std_logic_vector(signed(op_2)) wh
        else (not(std_logic_vector(signed(op_2)))) when ( op_to_be_performed = mvn )       
        else std_logic_vector(signed(op_2)) when ( op_to_be_performed = mov );       
 z_flag <= '1' when ((res_temp = X"00000000" and not(op_to_be_performed = mul)) or (op_3 = x"0000000000000000" and op_to_be_performed = mul)) AND s_bit = '1' and wea ='1'
-       else '0' when (not(res_temp = X"00000000")) and s_bit = '1' and wea ='1';
+       else '0' when ((not(res_temp = X"00000000") and not(op_to_be_performed = mul)) OR (not(op_3 = x"0000000000000000") and op_to_be_performed = mul)) and s_bit = '1' and wea ='1';
 n_flag <= (res_temp(31)) when s_bit = '1' and wea = '1' and not(op_to_be_performed = mul)
             else op_3(63) when s_bit = '1' and wea = '1' and op_to_be_performed = mul;   
 c_flag <= c_32 when (s_bit = '1' and wea ='1' and (op_to_be_performed = sub or op_to_be_performed = rsb or op_to_be_performed = add or op_to_be_performed = adc or op_to_be_performed = sbc or op_to_be_performed = rsc))
