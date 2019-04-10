@@ -294,8 +294,8 @@ alu_op_1 <= x"000000" & pc(9 downto 2) when ((control_state = fetch) or (control
 
 alu_op_2 <=  x"00000000" when (control_state = fetch)   --rotSpec assumed as  0000
             else X"000000" & imm8 when ((control_state = arith) and (I_bit = '1'))
-            else D_reg when (((control_state = arith) and (I_bit = '0')) or (control_state = addr and (I_bit = '1')) or (control_state = addr and IR(22) = '1' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh)))
-            else x"000000" & imm7_4 & imm3_0 when (control_state = addr and IR(22) = '0' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh))
+            else D_reg when (((control_state = arith) and (I_bit = '0')) or (control_state = addr and (I_bit = '1')) or (control_state = addr and IR(22) = '0' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh)))
+            else x"000000" & imm7_4 & imm3_0 when (control_state = addr and IR(22) = '1' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh))
             else "00000000000000000000" & imm12 when (control_state = addr and (I_bit = '0'))
             else std_logic_vector(to_signed((to_integer(signed(IR(23 downto 0)))),32)) when (control_state = brn)
             else x"00000000";
@@ -389,10 +389,11 @@ begin
                      data_mem_2_data_out <= B_reg(7 downto 0);
                      data_mem_3_data_out <= B_reg(7 downto 0);
                      case res(1 downto 0) is
-                         when "00" => data_mem_0_we <= '1';
-                         when "01" => data_mem_1_we <= '1';
-                         when "10" => data_mem_2_we <= '1';
-                         when "11" => data_mem_3_we <= '1';
+                         when "00" => data_mem_3_we <= '1';
+                         when "01" => data_mem_2_we <= '1';
+                         when "10" => data_mem_1_we <= '1';
+                         when "11" => data_mem_0_we <= '1';
+                         when others => 
                      end case;
                      
                      when strh => 
@@ -401,8 +402,9 @@ begin
                       data_mem_2_data_out <= B_reg(7 downto 0);
                       data_mem_3_data_out <= B_reg(15 downto 8);
                       case res(1) is
-                       when '0' => data_mem_0_we <= '1'; data_mem_1_we <= '1';
-                       when '1' => data_mem_2_we <= '1'; data_mem_3_we <= '1';
+                       when '1' => data_mem_0_we <= '1'; data_mem_1_we <= '1';
+                       when '0' => data_mem_2_we <= '1'; data_mem_3_we <= '1';
+                       when others => 
                       end case;
                       
                      when str =>
@@ -429,27 +431,31 @@ begin
                     DR <= data_mem_data_in ;
                 elsif i_decoded = ldrb then
                     case res(1 downto 0) is
-                        when "00" => DR <= x"000000" & data_mem_0_data_in;
-                        when "01" => DR <= x"000000" & data_mem_1_data_in;
-                        when "10" => DR <= x"000000" & data_mem_2_data_in;
-                        when "11" => DR <= x"000000" & data_mem_3_data_in;
+                        when "00" => DR <= x"000000" & data_mem_3_data_in;
+                        when "01" => DR <= x"000000" & data_mem_2_data_in;
+                        when "10" => DR <= x"000000" & data_mem_1_data_in;
+                        when "11" => DR <= x"000000" & data_mem_0_data_in;
+                        when others => 
                     end case;
                  elsif i_decoded = ldrh then
                     case res(1) is
-                     when '0' => DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in;
-                     when '1' => DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in;
+                     when '1' => DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in;
+                     when '0' => DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in;
+                     when others => 
                     end case;                     
                  elsif i_decoded = ldrsb then 
                     case res(1 downto 0) is
-                        when "00" => if data_mem_0_data_in(7) = '0' then DR <= x"000000" & data_mem_0_data_in; else DR <= x"ffffff" & data_mem_0_data_in; end if;
-                        when "01" => if data_mem_1_data_in(7) = '0' then DR <= x"000000" & data_mem_1_data_in; else DR <= x"ffffff" & data_mem_1_data_in; end if;
-                        when "10" => if data_mem_2_data_in(7) = '0' then DR <= x"000000" & data_mem_2_data_in; else DR <= x"ffffff" & data_mem_2_data_in; end if;
-                        when "11" => if data_mem_3_data_in(7) = '0' then DR <= x"000000" & data_mem_3_data_in; else DR <= x"ffffff" & data_mem_3_data_in; end if;
+                        when "11" => if data_mem_0_data_in(7) = '0' then DR <= x"000000" & data_mem_0_data_in; else DR <= x"ffffff" & data_mem_0_data_in; end if;
+                        when "10" => if data_mem_1_data_in(7) = '0' then DR <= x"000000" & data_mem_1_data_in; else DR <= x"ffffff" & data_mem_1_data_in; end if;
+                        when "01" => if data_mem_2_data_in(7) = '0' then DR <= x"000000" & data_mem_2_data_in; else DR <= x"ffffff" & data_mem_2_data_in; end if;
+                        when "00" => if data_mem_3_data_in(7) = '0' then DR <= x"000000" & data_mem_3_data_in; else DR <= x"ffffff" & data_mem_3_data_in; end if;
+                        when others => 
                     end case;                   
                  elsif i_decoded = ldrsh then
                     case res(1) is
-                        when '0' => if data_mem_1_data_in(7) = '0' then DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in; else DR <= x"ffff" & data_mem_1_data_in & data_mem_0_data_in; end if;
-                        when '1' => if data_mem_3_data_in(7) = '0' then DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in; else DR <= x"ffff" & data_mem_3_data_in & data_mem_2_data_in; end if;
+                        when '1' => if data_mem_1_data_in(7) = '0' then DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in; else DR <= x"ffff" & data_mem_1_data_in & data_mem_0_data_in; end if;
+                        when '0' => if data_mem_3_data_in(7) = '0' then DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in; else DR <= x"ffff" & data_mem_3_data_in & data_mem_2_data_in; end if;
+                        when others => 
                     end case;                   
                  end if;
             when mem2RF =>
@@ -611,4 +617,4 @@ end cpu_arch;
 --debounce:entity work.debouncer (debouncer_arch) PORT MAP(reset,step,go,instr,slow_clk,reset_temp,step_temp,go_temp,instr_temp);
 --cpu:entity work.CPU(CPU_arch) PORT MAP(clk,reset_temp,step_temp,go_temp,instr_temp,program_select,register_select,add_to_program_m,add_to_data_m,data_out,RF_data_out,state);
 --dis:entity work.LED_display(display) PORT MAP(disp_choice,add_to_program_m,instruction,add_to_data_m,data_out,data_in,state_temp,RF_data_out,LED);
-end behavioral; 
+--end behavioral; 
