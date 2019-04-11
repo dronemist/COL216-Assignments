@@ -37,6 +37,7 @@ Port (
     instr_class : in instr_class_type;
     reset,ld_bit,green_flag,clk :in std_logic;
     red_flag : out std_logic;
+    predicate_bit:in std_logic;
     control_state: out control_state_type
 );
 end control_state_FSM;
@@ -59,7 +60,10 @@ begin
             case curr_control_state is
                 when fetch => 
                     curr_control_state <= decode;
-                when decode => 
+                when decode =>
+                if predicate_bit = '0' then
+                    curr_control_state <= fetch;
+                else    
                     if instr_class = DP then
                         curr_control_state <= decode_shift;
                     elsif instr_class = DP_mull then
@@ -71,6 +75,7 @@ begin
                     elsif instr_class = halt then
                         curr_control_state <= halt;            
                     end if;
+                end if;    
                 when mult =>
                     curr_control_state <= alu_mult;                
                 when alu_mult =>

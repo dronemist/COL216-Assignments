@@ -53,7 +53,7 @@ signal RF_wr_1_addr_inp: std_logic_vector(3 downto 0);
 signal RF_wr_1_data_inp: std_logic_vector(31 downto 0);
 signal RF_wr_1_we : std_logic;
 signal RF_pc_data_in: std_logic_vector(31 downto 0);
-signal RF_pc_wea,I_bit,U_bit, S_bit: std_logic;
+signal RF_pc_wea,I_bit,U_bit, S_bit, predicate_bit,link_bit: std_logic;
 signal instr_class : instr_class_type;
 signal ld_bit,green_flag,data_mem_0_we,data_mem_1_we,data_mem_2_we,data_mem_3_we,p_bit,w_bit : std_logic;
 signal red_flag : std_logic;
@@ -97,6 +97,7 @@ component control_state_FSM
             instr_class : in instr_class_type;
             reset,ld_bit,green_flag,clk :in std_logic;
             red_flag : out std_logic;
+            predicate_bit:in std_logic;
             control_state: out control_state_type
         );
 end component;
@@ -172,7 +173,22 @@ Port (
        add_result: out std_logic_vector(63 downto 0)
  );
 end component;
+component predicate_calculator is
+  Port (
+  z_flag,n_flag,c_flag,v_flag: in std_logic;
+  ins: in std_logic_vector(3 downto 0);
+  predicate: out std_logic
+   );
+end component;
 begin
+predicate_instance: predicate_calculator port map(
+    z_flag => z_flag,
+    n_flag => n_flag,
+    c_flag => c_flag,
+    v_flag => v_flag,
+    ins => IR(31 downto 28),
+  predicate => predicate_bit
+);
 data_memory_instance_0: data_memory port map( 
             a => data_mem_add_to_data_m(7 downto 0),
             d => data_mem_0_data_out,
@@ -246,6 +262,7 @@ control_state_instance: control_state_FSM port map(
             green_flag => green_flag,
             clk => clk,
             red_flag => red_flag,
+            predicate_bit => predicate_bit,
             control_state => control_state
      );
 execution_state_instance: execution_state_FSM port map(
@@ -303,6 +320,7 @@ U_bit <= IR(22);
 S_bit <= IR(20);
 p_bit <= IR(24);
 w_bit <= IR(21);
+link_bit <= IR(24);
 --PC <= alu_result & "00" when control_state = fetch;
 RF_rd_1_addr_inp <= IR(11 downto 8) when control_state = decode and instr_class = DP_mull                    
                     else IR(19 downto 16) when (control_state = decode or (control_state = mult and instr_class = DP_mull));
@@ -541,13 +559,28 @@ begin
                 if i_decoded = bne then
                    if z_flag = '0' then 
                     RF_pc_data_in <= alu_result(29 downto 0) & "00";
-                   end if;  
+                   end if;
+                   if link_bit = '1' then
+                    RF_wr_1_addr_inp <= "1110";
+                    RF_wr_1_data_inp <= PC;
+                    RF_wr_1_we <= '1';
+                   end if; 
                 elsif i_decoded = beq then
                    if z_flag = '1' then 
                     RF_pc_data_in <= alu_result(29 downto 0) & "00";
                    end if;
+                   if link_bit = '1' then
+                    RF_wr_1_addr_inp <= "1110";
+                    RF_wr_1_data_inp <= PC;
+                    RF_wr_1_we <= '1';
+                   end if; 
                 else 
-                    RF_pc_data_in <= alu_result(29 downto 0) & "00";    
+                    RF_pc_data_in <= alu_result(29 downto 0) & "00";
+                    if link_bit = '1' then
+                        RF_wr_1_addr_inp <= "1110";
+                        RF_wr_1_data_inp <= PC;
+                        RF_wr_1_we <= '1';
+                    end if;     
                 end if;
                 RF_pc_wea <= '1';
             when halt =>
