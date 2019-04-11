@@ -307,7 +307,11 @@ begin
                 RF_pc_data_in <= alu_result(29 downto 0) & "00";
                 IR <= instruction;
             when decode =>
-                A <= RF_rd_1_data_out;                       
+                if i_decoded = mov then
+                A <= X"00000000";
+               else 
+                A <= RF_rd_1_data_out;
+               end if;                       
                 B_reg <= RF_rd_2_data_out;
             when decode_shift =>
                 d_reg <= shifter_output; 
