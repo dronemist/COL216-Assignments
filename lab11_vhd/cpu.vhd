@@ -71,7 +71,7 @@ signal shifter_output : std_logic_vector(31 downto 0);
 signal alu_carry_in : std_logic;
 signal shifter_carry_out : std_logic;
 signal z_flag, n_flag, c_flag, v_flag : std_logic;
-signal imm7_4, imm3_0 : std_logic_vector(3 downto 0);
+signal imm7_4, imm3_0,rot_spec : std_logic_vector(3 downto 0);
 signal mult_output, mult_output_reg : std_logic_vector(63 downto 0);
 signal mult_inp_1, mult_inp_2 : std_logic_vector(31 downto 0);
 signal signed_mult_and_add : std_logic; 
@@ -301,7 +301,7 @@ adder_64_bit_instance: adder_64_bit port map(
                 is_signed => signed_mult_and_add,
                 add_result => mla_result
 );
-
+rot_spec <= IR(11 downto 8);
 RF_data_out <= RF_rd_0_data_out;
 RF_rd_0_addr_inp <= register_select;
 type_of_shift <= IR(4);-- 0 when constant shift 1 when register specified shift      
@@ -349,8 +349,7 @@ alu_op_1 <= x"000000" & pc(9 downto 2) when ((control_state = fetch) or (control
           else x"00000000";
 
 alu_op_2 <=  x"00000000" when (control_state = fetch)   --rotSpec assumed as  0000
-            else X"000000" & imm8 when ((control_state = arith) and (I_bit = '1'))
-            else D_reg when (((control_state = arith) and (I_bit = '0')) or (control_state = addr and (I_bit = '1')) or (control_state = addr and IR(22) = '0' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh)))
+            else D_reg when ((control_state = arith) or (control_state = addr and (I_bit = '1')) or (control_state = addr and IR(22) = '0' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh)))
             else x"000000" & imm7_4 & imm3_0 when (control_state = addr and IR(22) = '1' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh))
             else "00000000000000000000" & imm12 when (control_state = addr and (I_bit = '0'))
             else std_logic_vector(to_signed((to_integer(signed(IR(23 downto 0)))),32)) when (control_state = brn)
@@ -363,15 +362,17 @@ alu_flag_wea <= '1' when control_state = arith OR control_state = res2RF_1
 data_mem_add_to_data_m <= res when ((control_state = mem_wr) or (control_state = mem_rd)) and p_bit = '1'
                           else A when ((control_state = mem_wr) or (control_state = mem_rd)) and p_bit = '0';
 
-shifter_input <= B_reg when control_state = decode_shift else X"00000000";
+shifter_input <= X"000000" & imm8 when ((control_state = decode_shift) and (I_bit = '1') and instr_class = DP)
+                else B_reg when (control_state = decode_shift);
 
-
-shift_amount <= "00000" when ((i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh) and control_state = decode_shift)
+shift_amount <= (rot_spec & '0') when ((control_state = decode_shift) and (I_bit = '1') and instr_class = DP)
+            else "00000" when ((i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh) and control_state = decode_shift)
             else (RF_rd_2_data_out(4 downto 0)) when type_of_shift = '1' and control_state = decode_shift
             else IR(11 downto 7) when type_of_shift = '0' and control_state = decode_shift
             else "00000";
 
-shift_type <= IR(6 downto 5) when control_state = decode_shift;
+shift_type <= "11" when ((control_state = decode_shift) and (I_bit = '1') and instr_class = DP)
+            else IR(6 downto 5) when control_state = decode_shift;
 
 mult_inp_1 <= A;
 mult_inp_2 <= B_reg;
