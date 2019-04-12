@@ -69,7 +69,7 @@ signal type_of_shift : std_logic;
 signal shift_amount : std_logic_vector(4 downto 0);
 signal shifter_output : std_logic_vector(31 downto 0);
 signal alu_carry_in : std_logic;
-signal shifter_carry_out : std_logic;
+signal shifter_carry_out,shifter_carry_out_reg : std_logic;
 signal z_flag, n_flag, c_flag, v_flag : std_logic;
 signal imm7_4, imm3_0,rot_spec : std_logic_vector(3 downto 0);
 signal mult_output, mult_output_reg : std_logic_vector(63 downto 0);
@@ -232,7 +232,7 @@ ALU_instance: ALU_and_flags port map(
                         op_to_be_performed => alu_op_to_be_performed,
                         carry => alu_carry, 
                         s_bit => s_bit,
-                        carry_from_shifter => shifter_carry_out,
+                        carry_from_shifter => shifter_carry_out_reg,
                         shift_amount => shift_amount,
                         wea => alu_flag_wea,
                         z_flag_output => z_flag,
@@ -452,6 +452,7 @@ begin
                 end if;
             when decode_shift =>
                 d_reg <= shifter_output; 
+                shifter_carry_out_reg <= shifter_carry_out;
             when arith =>
                 --alu_op_1 <= A;
                 --if I_bit = '1' then
