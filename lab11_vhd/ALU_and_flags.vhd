@@ -48,14 +48,20 @@ end ALU_and_flags;
 
 architecture Behavioral of ALU_and_flags is
 signal z_flag,v_flag,c_flag,n_flag,c_32,c_31:std_logic;
+signal op_1_signal, op_2_signal : std_logic_vector(31 downto 0);
 signal res_temp:std_logic_vector(31 downto 0);
 begin
+op_1_signal <= not(op_1) when op_to_be_performed = rsb or op_to_be_performed = rsc
+                else op_1;
+                
+op_2_signal <= not(op_2) when op_to_be_performed = sub or op_to_be_performed = sbc or op_to_be_performed = bic or op_to_be_performed = mvn or op_to_be_performed = mvn
+                else op_2;
 result <= res_temp;
-c_31 <= op_1(31) xor op_2(31) xor res_temp(31);
-c_32 <= (op_1(31) AND op_2(31)) or (op_1(31) and c_31) or(op_2(31) and c_31); 
+c_31 <= op_1_signal(31) xor op_2_signal(31) xor res_temp(31);
+c_32 <= (op_1_signal(31) AND op_2_signal(31)) or (op_1_signal(31) and c_31) or(op_2_signal(31) and c_31); 
 res_temp <= std_logic_vector(signed(op_1)) AND std_logic_vector(signed(op_2)) when ( op_to_be_performed = op_and )
        ELSE std_logic_vector(signed(op_1)) XOR std_logic_vector(signed(op_2)) when ( op_to_be_performed = op_xor )
-       else std_logic_vector(signed(op_1)) - std_logic_vector(signed(op_2)) when ( op_to_be_performed = sub )       
+       else std_logic_vector(signed(op_1)) + (not std_logic_vector(signed(op_2))) + 1 when ( op_to_be_performed = sub )       
        else (not(std_logic_vector(signed(op_1)))) + std_logic_vector(signed(op_2)) + 1 when ( op_to_be_performed = rsb )       
        else std_logic_vector(signed(op_1)) + std_logic_vector(signed(op_2)) + carry when ( op_to_be_performed = add ) -- This add will also be used to increment PC in fetch and branch instruction       
        else std_logic_vector(signed(op_1)) + std_logic_vector(signed(op_2)) + c_flag when ( op_to_be_performed = adc )       

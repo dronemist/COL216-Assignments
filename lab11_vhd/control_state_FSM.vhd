@@ -46,9 +46,9 @@ architecture Behavioral of control_state_FSM is
 signal curr_control_state : control_state_type;
 begin
 control_state <= curr_control_state;
-red_flag <= '1' when curr_control_state = res2RF 
+red_flag <= '1' when curr_control_state = res2RF OR curr_control_state = res2RF_2
 or curr_control_state = mem_wr or curr_control_state = mem2RF
-or curr_control_state = brn or curr_control_state = halt
+or curr_control_state = brn or curr_control_state = halt or curr_control_state = skip
 else '0';
 -- control_state state transitions
 process(clk,reset)
@@ -61,21 +61,23 @@ begin
                 when fetch => 
                     curr_control_state <= decode;
                 when decode =>
-                if predicate_bit = '0' then
+                 if instr_class = halt then
+                      curr_control_state <= halt;
+                 elsif predicate_bit = '0' then
+                       curr_control_state <= skip;
+                 else    
+                        if instr_class = DP then
+                            curr_control_state <= decode_shift;
+                        elsif instr_class = DP_mull then
+                            curr_control_state <= mult;    
+                        elsif instr_class = DT then
+                            curr_control_state <= decode_shift;
+                        elsif instr_class = branch then
+                            curr_control_state <= brn;            
+                        end if;
+                end if;
+                when skip =>
                     curr_control_state <= fetch;
-                else    
-                    if instr_class = DP then
-                        curr_control_state <= decode_shift;
-                    elsif instr_class = DP_mull then
-                        curr_control_state <= mult;    
-                    elsif instr_class = DT then
-                        curr_control_state <= decode_shift;
-                    elsif instr_class = branch then
-                        curr_control_state <= brn;
-                    elsif instr_class = halt then
-                        curr_control_state <= halt;            
-                    end if;
-                end if;    
                 when mult =>
                     curr_control_state <= alu_mult;                
                 when alu_mult =>

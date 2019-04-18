@@ -98,8 +98,8 @@ i_decoded <=
     else str when instr_class_signal = DT and F_field ="01" and L_bit = '0' and cond = "1110" and ((P_bit='0' and W_bit = '0') or P_bit = '1') and B_bit = '0'
     else ldrb when instr_class_signal = DT and F_field ="01" and L_bit = '1' and cond = "1110" and ((P_bit='0' and W_bit = '0') or P_bit = '1') and B_bit = '1'
     else strb when instr_class_signal = DT and F_field ="01" and L_bit = '0' and cond = "1110" and ((P_bit='0' and W_bit = '0') or P_bit = '1') and B_bit = '1'
-    else beq when instr_class_signal = branch and cond = "0000" and opc(1) = '1'
-    else bne when instr_class_signal = branch and cond = "0001" and opc(1) = '1'
-    else b when instr_class_signal = branch and cond = "1110" and opc(1) = '1'
+--    else beq when instr_class_signal = branch and cond = "0000" and opc(1) = '1'
+--    else bne when instr_class_signal = branch and cond = "0001" and opc(1) = '1'
+    else b when instr_class_signal = branch  and opc(1) = '1'
     else unknown;
 end Behavioral;

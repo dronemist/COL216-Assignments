@@ -9,7 +9,7 @@ package common_type is
 type instr_class_type is (DP, DT, branch,halt, DP_mull, unknown);
 type i_decoded_type is (add,sub,cmp,mov,and_instr,eor,orr,bic,adc,sbc,rsb,rsc,mul,mla,mull,smull,smlal,umull,umlal,cmn,tst,teq,movn,ldr,str,ldrb,strb,ldrsb,ldrh,strh,ldrsh,beq,bne,b,unknown);
 type execution_state_type is (initial,onestep,oneinstr,cont,done);
-type control_state_type is (fetch,decode,decode_shift,arith,mult,alu_mult,res2RF_1,res2RF_2,addr,brn,halt,res2RF,mem_wr,mem_rd,mem2RF);
+type control_state_type is (fetch,decode,decode_shift,arith,mult,alu_mult,res2RF_1,res2RF_2,addr,brn,halt,res2RF,mem_wr,mem_rd,mem2RF,skip);
 type alu_op_type is(op_and,op_xor,sub,rsb,add,adc,sbc,rsc,orr,mov,bic,mvn,mul);
 end common_type; 
 
@@ -31,7 +31,7 @@ entity CPU is
     clk,reset,step,go,instr: in std_logic;
     program_select: in std_logic_vector(2 downto 0);
     register_select: in std_logic_vector(3 downto 0);
-    add_to_program_m,add_to_data_m,data_out, RF_data_out: out std_logic_vector(31 downto 0);
+    add_to_program_m,add_to_data_m,data_out, RF_data_out, instruction_disp: out std_logic_vector(31 downto 0);
     state: out std_logic_vector(1 downto 0)
   );
 end CPU;
@@ -69,9 +69,9 @@ signal type_of_shift : std_logic;
 signal shift_amount : std_logic_vector(4 downto 0);
 signal shifter_output : std_logic_vector(31 downto 0);
 signal alu_carry_in : std_logic;
-signal shifter_carry_out,shifter_carry_out_reg : std_logic;
+signal shifter_carry_out, shifter_carry_out_reg : std_logic;
 signal z_flag, n_flag, c_flag, v_flag : std_logic;
-signal imm7_4, imm3_0,rot_spec : std_logic_vector(3 downto 0);
+signal imm7_4, imm3_0, rot_spec : std_logic_vector(3 downto 0);
 signal mult_output, mult_output_reg : std_logic_vector(63 downto 0);
 signal mult_inp_1, mult_inp_2 : std_logic_vector(31 downto 0);
 signal signed_mult_and_add : std_logic; 
@@ -126,6 +126,7 @@ component ALU_and_flags
 end component;
 component register_file
         Port ( 
+            clk: in std_logic;
             rd_0_addr_inp: in std_logic_vector(3 downto 0);-- rd_1 signifies read port 1
             rd_0_data_out :out std_logic_vector(31 downto 0);
             rd_1_addr_inp: in std_logic_vector(3 downto 0);-- rd_1 signifies read port 1
@@ -242,6 +243,7 @@ ALU_instance: ALU_and_flags port map(
                         result => alu_result
                        );   
 RF_instance: register_file port map(
+                                   clk => clk,
                                    rd_0_addr_inp => RF_rd_0_addr_inp,-- rd_1 signifies read port 1
                                    rd_0_data_out => RF_rd_0_data_out,
                                    rd_1_addr_inp => RF_rd_1_addr_inp,-- rd_1 signifies read port 1
@@ -321,6 +323,7 @@ S_bit <= IR(20);
 p_bit <= IR(24);
 w_bit <= IR(21);
 link_bit <= IR(24);
+instruction_disp <= IR;
 --PC <= alu_result & "00" when control_state = fetch;
 RF_rd_1_addr_inp <= IR(11 downto 8) when control_state = decode and instr_class = DP_mull                    
                     else IR(19 downto 16) when (control_state = decode or (control_state = mult and instr_class = DP_mull));
@@ -349,6 +352,7 @@ alu_op_1 <= x"000000" & pc(9 downto 2) when ((control_state = fetch) or (control
           else x"00000000";
 
 alu_op_2 <=  x"00000000" when (control_state = fetch)   --rotSpec assumed as  0000
+            else X"000000" & imm8 when ((control_state = arith) and (I_bit = '1'))
             else D_reg when ((control_state = arith) or (control_state = addr and (I_bit = '1')) or (control_state = addr and IR(22) = '0' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh)))
             else x"000000" & imm7_4 & imm3_0 when (control_state = addr and IR(22) = '1' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh))
             else "00000000000000000000" & imm12 when (control_state = addr and (I_bit = '0'))
@@ -363,7 +367,9 @@ data_mem_add_to_data_m <= res when ((control_state = mem_wr) or (control_state =
                           else A when ((control_state = mem_wr) or (control_state = mem_rd)) and p_bit = '0';
 
 shifter_input <= X"000000" & imm8 when ((control_state = decode_shift) and (I_bit = '1') and instr_class = DP)
+
                 else B_reg when (control_state = decode_shift);
+
 
 shift_amount <= (rot_spec & '0') when ((control_state = decode_shift) and (I_bit = '1') and instr_class = DP)
             else "00000" when ((i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh) and control_state = decode_shift)
@@ -418,11 +424,11 @@ begin
                 RF_pc_data_in <= alu_result(29 downto 0) & "00";
                 IR <= instruction;
             when decode =>
-               if i_decoded = mov then
-                A <= X"00000000";
-               else 
-                A <= RF_rd_1_data_out;
-               end if;                      
+                if i_decoded = mov then
+                            A <= X"00000000";
+                           else 
+                            A <= RF_rd_1_data_out;
+                           end if;                      
                 B_reg <= RF_rd_2_data_out;
             when mult =>
                 mult_output_reg <= mult_output;
@@ -562,34 +568,34 @@ begin
                 --alu_op_1 <= X"000000" & "0" & pc(9 downto 2);
                 --alu_op_2 <= std_logic_vector(to_signed((to_integer(signed(IR(23 downto 0)))),32));
                 --alu_carry <= '1';
-                if i_decoded = bne then
-                   if z_flag = '0' then 
-                    RF_pc_data_in <= alu_result(29 downto 0) & "00";
-                   end if;
+--                if i_decoded = bne then
+--                   if z_flag = '0' then 
+--                    RF_pc_data_in <= alu_result(29 downto 0) & "00";
+--                   end if;  
+--                   if link_bit = '1' then
+--                    RF_wr_1_addr_inp <= "1110";
+--                    RF_wr_1_data_inp <= PC;
+--                    RF_wr_1_we <= '1';
+--                   end if; 
+--                elsif i_decoded = beq then
+--                   if z_flag = '1' then 
+--                    RF_pc_data_in <= alu_result(29 downto 0) & "00";
+--                   end if;
+--                   if link_bit = '1' then
+--                    RF_wr_1_addr_inp <= "1110";
+--                    RF_wr_1_data_inp <= PC;
+--                    RF_wr_1_we <= '1';
+--                   end if;                   
+--                else 
+                    RF_pc_data_in <= alu_result(29 downto 0) & "00";   
                    if link_bit = '1' then
-                    RF_wr_1_addr_inp <= "1110";
-                    RF_wr_1_data_inp <= PC;
-                    RF_wr_1_we <= '1';
-                   end if; 
-                elsif i_decoded = beq then
-                   if z_flag = '1' then 
-                    RF_pc_data_in <= alu_result(29 downto 0) & "00";
-                   end if;
-                   if link_bit = '1' then
-                    RF_wr_1_addr_inp <= "1110";
-                    RF_wr_1_data_inp <= PC;
-                    RF_wr_1_we <= '1';
-                   end if; 
-                else 
-                    RF_pc_data_in <= alu_result(29 downto 0) & "00";
-                    if link_bit = '1' then
-                        RF_wr_1_addr_inp <= "1110";
-                        RF_wr_1_data_inp <= PC;
-                        RF_wr_1_we <= '1';
-                    end if;     
-                end if;
+                     RF_wr_1_addr_inp <= "1110";
+                     RF_wr_1_data_inp <= PC;
+                     RF_wr_1_we <= '1';
+                   end if;                           
+--                end if;
                 RF_pc_wea <= '1';
-            when halt =>
+            when others =>
                     -- do nothing    
         end case;
     end if;
@@ -726,6 +732,6 @@ end cpu_arch;
 --state_temp <= "000000000000000000000000000000" & state(1 downto 0);
 --clk_slow:entity work.frequency_divider (frequency_divider_arch) PORT MAP(clk,slow_clk);
 --debounce:entity work.debouncer (debouncer_arch) PORT MAP(reset,step,go,instr,slow_clk,reset_temp,step_temp,go_temp,instr_temp);
---cpu:entity work.CPU(CPU_arch) PORT MAP(clk,reset_temp,step_temp,go_temp,instr_temp,program_select,register_select,add_to_program_m,add_to_data_m,data_out,RF_data_out,state);
+--cpu:entity work.CPU(CPU_arch) PORT MAP(clk,reset_temp,step_temp,go_temp,instr_temp,program_select,register_select,add_to_program_m,add_to_data_m,data_out,RF_data_out,instruction,state);
 --dis:entity work.LED_display(display) PORT MAP(disp_choice,add_to_program_m,instruction,add_to_data_m,data_out,data_in,state_temp,RF_data_out,LED);
 --end behavioral; 
