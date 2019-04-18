@@ -125,6 +125,7 @@ component ALU_and_flags
 end component;
 component register_file
         Port ( 
+            clk: in std_logic;
             rd_0_addr_inp: in std_logic_vector(3 downto 0);-- rd_1 signifies read port 1
             rd_0_data_out :out std_logic_vector(31 downto 0);
             rd_1_addr_inp: in std_logic_vector(3 downto 0);-- rd_1 signifies read port 1
@@ -226,6 +227,7 @@ ALU_instance: ALU_and_flags port map(
                         result => alu_result
                        );   
 RF_instance: register_file port map(
+                                   clk => clk,
                                    rd_0_addr_inp => RF_rd_0_addr_inp,-- rd_1 signifies read port 1
                                    rd_0_data_out => RF_rd_0_data_out,
                                    rd_1_addr_inp => RF_rd_1_addr_inp,-- rd_1 signifies read port 1
@@ -399,11 +401,7 @@ begin
                 RF_pc_data_in <= alu_result(29 downto 0) & "00";
                 IR <= instruction;
             when decode =>
-               if i_decoded = mov then
-                A <= X"00000000";
-               else 
-                A <= RF_rd_1_data_out;
-               end if;                       
+                A <= RF_rd_1_data_out;                       
                 B_reg <= RF_rd_2_data_out;
             when mult =>
                 mult_output_reg <= mult_output;
