@@ -58,12 +58,12 @@ signal pc: std_logic_vector(31 downto 0) := x"00000000";
 begin
 rd_0_data_out <= register_file(to_integer(unsigned(rd_0_addr_inp))) when ((mode = user) or ((mode = supervisor) and ((to_integer(unsigned(rd_0_addr_inp)) <= 12) or (to_integer(unsigned(rd_0_addr_inp) = 15)))))
 				else r13_svc when ((mode = supervisor) and (to_integer(unsigned(rd_0_addr_inp)) = 13))
-				else r14_svc when ((mode = supervisor) and (to_integer(unsigned(rd_0_addr_inp)) = 13));
+				else r14_svc when ((mode = supervisor) and (to_integer(unsigned(rd_0_addr_inp)) = 14));
 
 				
 rd_1_data_out <= register_file(to_integer(unsigned(rd_1_addr_inp))) when ((mode = user) or ((mode = supervisor) and ((to_integer(unsigned(rd_1_addr_inp)) <= 12) or (to_integer(unsigned(rd_1_addr_inp) = 15)))))
 				else r13_svc when ((mode = supervisor) and (to_integer(unsigned(rd_1_addr_inp)) = 13))
-				else r14_svc when ((mode = supervisor) and (to_integer(unsigned(rd_1_addr_inp)) = 13))
+				else r14_svc when ((mode = supervisor) and (to_integer(unsigned(rd_1_addr_inp)) = 14))
 				
 rd_2_data_out <= register_file(to_integer(unsigned(rd_2_addr_inp)));
 
