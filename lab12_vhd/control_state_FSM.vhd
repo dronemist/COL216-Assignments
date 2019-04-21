@@ -71,7 +71,9 @@ begin
                         elsif instr_class = DT then
                             curr_control_state <= decode_shift;
                         elsif instr_class = branch then
-                            curr_control_state <= brn;            
+                            curr_control_state <= brn;        
+						elsif instr_class = swi or instr_class = unknown then
+							curr_control_state <= exception_handler;
                         end if;
                 end if;
                 when skip =>
@@ -109,7 +111,9 @@ begin
                 when brn =>
                     curr_control_state <= skip;
                 when halt =>
-                    curr_control_state <= fetch;                                        
+                    curr_control_state <= fetch;    
+				when exception_handler =>
+					curr_control_state <= skip;
             end case;
         end if;        
     end if;        

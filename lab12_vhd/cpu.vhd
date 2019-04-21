@@ -9,7 +9,7 @@ package common_type is
 type instr_class_type is (DP, DT, branch,halt, DP_mull, swi, unknown);
 type i_decoded_type is (add,sub,cmp,mov,and_instr,eor,orr,bic,adc,sbc,rsb,rsc,mul,mla,mull,smull,smlal,umull,umlal,cmn,tst,teq,movn,ldr,str,ldrb,strb,ldrsb,ldrh,strh,ldrsh,beq,bne,b,swi,unknown);
 type execution_state_type is (initial,onestep,oneinstr,cont,done);
-type control_state_type is (fetch,decode,decode_shift,arith,mult,alu_mult,res2RF_1,res2RF_2,addr,brn,halt,res2RF,mem_wr,mem_rd,mem2RF,skip);
+type control_state_type is (fetch,decode,decode_shift,arith,mult,alu_mult,res2RF_1,res2RF_2,addr,brn,halt,res2RF,mem_wr,mem_rd,mem2RF,exception_handler,skip);
 type alu_op_type is(op_and,op_xor,sub,rsb,add,adc,sbc,rsc,orr,mov,bic,mvn,mul);
 type mode_type is (user, privileged);
 end common_type; 
@@ -80,6 +80,9 @@ signal signed_mult_and_add : std_logic;
 signal adder_op_2, mla_result, mla_result_reg : std_logic_vector(63 downto 0);
 signal upper_32_mla_inp_bits, lower_32_mla_inp_bits,upper_32_mla_out_bits, lower_32_mla_out_bits : std_logic_vector(31 downto 0);
 signal mode : mode_type;
+signal usr_mode_encoding, supervisor_mode_encoding : std_logic_vector(5 downto 0);
+signal cpsr, spsr_svc : std_logic_vector(31 downto 0); 
+signal reset_addr, undef_addr, swi_addr, irq_addr : std_logic_vector(31 downto 0);
 component data_memory
         Port (
             a: in std_logic_vector(7 downto 0);
@@ -393,7 +396,16 @@ adder_op_2 <= upper_32_mla_inp_bits & lower_32_mla_inp_bits when i_decoded = sml
               else x"0000000000000000";
 upper_32_mla_out_bits <= mla_result(63 downto 32);
 lower_32_mla_out_bits <= mla_result(31 downto 0);
-
+reset_addr <= x"00000000";
+undef_addr <= x"00000004";
+swi_addr <= x"00000008";
+irq_addr <= x"00000018";
+usr_mode_encoding <= "10000";
+supervisor_mode_encoding <= "10011"; 
+-- cpsr(27 downto 8) <= x"00000" & "0";
+-- cpsr(6 downto 5) <= "00";
+-- spsr(27 downto 8) <= x"00000" & "0";
+-- spsr(6 downto 5) <= "00";
 
 --IR <= instruction when (control_state = fetch);
 -- final process
@@ -658,6 +670,10 @@ begin
                    end if;                           
 --                end if;
                 RF_pc_wea <= '1';
+				
+			when exception_handler => 
+				
+			
             when others =>
                     -- do nothing    
         end case;
