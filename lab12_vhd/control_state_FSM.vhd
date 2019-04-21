@@ -46,9 +46,7 @@ architecture Behavioral of control_state_FSM is
 signal curr_control_state : control_state_type;
 begin
 control_state <= curr_control_state;
-red_flag <= '1' when curr_control_state = res2RF OR curr_control_state = res2RF_2
-or curr_control_state = mem_wr or curr_control_state = mem2RF
-or curr_control_state = brn or curr_control_state = halt or curr_control_state = skip
+red_flag <= '1' when  curr_control_state = mem_wr or curr_control_state = halt or curr_control_state = skip
 else '0';
 -- control_state state transitions
 process(clk,reset)
@@ -85,7 +83,7 @@ begin
                 when res2RF_1 =>
                     curr_control_state <= res2RF_2;
                 when res2RF_2 =>
-                    curr_control_state <= fetch;                
+                    curr_control_state <= skip;                
                 when decode_shift =>
                     if instr_class = DP then
                         curr_control_state <= arith;
@@ -95,7 +93,7 @@ begin
                 when arith =>
                     curr_control_state <= res2RF;
                 when res2RF =>
-                    curr_control_state <= fetch;
+                    curr_control_state <= skip;
                 when addr =>
                     if ld_bit = '1' then
                         curr_control_state <= mem_rd;
@@ -107,9 +105,9 @@ begin
                 when mem_rd =>
                     curr_control_state <= mem2RF;
                 when mem2RF =>
-                    curr_control_state <= fetch;
+                    curr_control_state <= skip;
                 when brn =>
-                    curr_control_state <= fetch;
+                    curr_control_state <= skip;
                 when halt =>
                     curr_control_state <= fetch;                                        
             end case;

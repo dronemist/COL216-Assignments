@@ -62,7 +62,7 @@ cond <= instruction(31 downto 28);
 opc <= instruction(25 downto 24);
 instr_class <= instr_class_signal;  
 instr_class_signal <= halt when instruction = X"00000000"
-			   else swi when instruction(27 downto 24) = "1111"
+			   else swi when instruction(27 downto 24) = "1111"	
                else DP_mull when (F_field = "00" and I_bit = '0' and sh ="00" and instruction(7) = '1' and instruction(4) = '1' and(opcode(3 downto 1)="000" or opcode(3 downto 2)="01"))
                else DT when F_field = "01" or (F_field = "00" and I_bit = '0' and instruction(7) = '1' and instruction(4) = '1') 
                else DP when F_field = "00"
@@ -102,6 +102,6 @@ i_decoded <=
 --    else beq when instr_class_signal = branch and cond = "0000" and opc(1) = '1'
 --    else bne when instr_class_signal = branch and cond = "0001" and opc(1) = '1'
     else b when instr_class_signal = branch  and opc(1) = '1'
-	else swi when instr_class_signal = swi
-    else unknown;
+    else swi when instr_class_signal = swi
+	else unknown;
 end Behavioral;
