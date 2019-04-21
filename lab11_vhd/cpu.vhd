@@ -32,7 +32,8 @@ entity CPU is
     program_select: in std_logic_vector(2 downto 0);
     register_select: in std_logic_vector(3 downto 0);
     add_to_program_m,add_to_data_m,data_out, RF_data_out, instruction_disp: out std_logic_vector(31 downto 0);
-    state: out std_logic_vector(1 downto 0)
+    state: out std_logic_vector(1 downto 0);
+    wr_addr_inp: out std_logic_vector(3 downto 0)
   );
 end CPU;
 
@@ -303,12 +304,13 @@ adder_64_bit_instance: adder_64_bit port map(
                 is_signed => signed_mult_and_add,
                 add_result => mla_result
 );
+wr_addr_inp <="000" & predicate_bit;
 rot_spec <= IR(11 downto 8);
 RF_data_out <= RF_rd_0_data_out;
 RF_rd_0_addr_inp <= register_select;
 type_of_shift <= IR(4);-- 0 when constant shift 1 when register specified shift      
-state <= "00";     
-add_to_data_m <= data_mem_add_to_data_m;
+--state <= "00";     
+--add_to_data_m <= data_mem_add_to_data_m;
 data_mem_data_in <= data_mem_3_data_in & data_mem_2_data_in & data_mem_1_data_in & data_mem_0_data_in;
 data_out <= data_mem_data_out;
 add_to_program_m <= PC;                       
@@ -318,7 +320,7 @@ imm7_4 <= IR(11 downto 8);
 imm3_0 <= IR(3 downto 0); 
 ld_bit <= IR(20);
 I_bit <= IR(25);
-U_bit <= IR(22);
+U_bit <= IR(23);
 S_bit <= IR(20);
 p_bit <= IR(24);
 w_bit <= IR(21);
@@ -352,7 +354,6 @@ alu_op_1 <= x"000000" & pc(9 downto 2) when ((control_state = fetch) or (control
           else x"00000000";
 
 alu_op_2 <=  x"00000000" when (control_state = fetch)   --rotSpec assumed as  0000
-            else X"000000" & imm8 when ((control_state = arith) and (I_bit = '1'))
             else D_reg when ((control_state = arith) or (control_state = addr and (I_bit = '1')) or (control_state = addr and IR(22) = '0' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh)))
             else x"000000" & imm7_4 & imm3_0 when (control_state = addr and IR(22) = '1' and (i_decoded = ldrsh or i_decoded = ldrh or i_decoded = ldrsb or i_decoded = strh))
             else "00000000000000000000" & imm12 when (control_state = addr and (I_bit = '0'))
@@ -363,7 +364,7 @@ alu_carry <= '1' when ((control_state = fetch) or (control_state = brn))
             else '0';
 alu_flag_wea <= '1' when control_state = arith OR control_state = res2RF_1
                             else '0';
-data_mem_add_to_data_m <= res when ((control_state = mem_wr) or (control_state = mem_rd)) and p_bit = '1'
+data_mem_add_to_data_m <= (res(31 downto 2) & "00") when ((control_state = mem_wr) or (control_state = mem_rd)) and p_bit = '1'
                           else A when ((control_state = mem_wr) or (control_state = mem_rd)) and p_bit = '0';
 
 shifter_input <= X"000000" & imm8 when ((control_state = decode_shift) and (I_bit = '1') and instr_class = DP)
@@ -388,6 +389,8 @@ adder_op_2 <= upper_32_mla_inp_bits & lower_32_mla_inp_bits when i_decoded = sml
               else x"0000000000000000";
 upper_32_mla_out_bits <= mla_result(63 downto 32);
 lower_32_mla_out_bits <= mla_result(31 downto 0);
+
+
 --IR <= instruction when (control_state = fetch);
 -- final process
 process(clk, reset,green_flag)
@@ -470,7 +473,9 @@ begin
             when res2RF =>
                 RF_wr_1_addr_inp <= IR(15 downto 12);
                 RF_wr_1_data_inp <= res;
-                RF_wr_1_we <= '1';    
+                if not(i_decoded = cmp or i_decoded = cmn or i_decoded = tst or i_decoded = teq) then 
+                    RF_wr_1_we <= '1';    
+                end if;
             when addr =>
                 --alu_op_1 <= A;
                 --alu_op_2 <= "00000000000000000000" & imm12;
@@ -490,24 +495,42 @@ begin
                      data_mem_1_data_out <= B_reg(7 downto 0);
                      data_mem_2_data_out <= B_reg(7 downto 0);
                      data_mem_3_data_out <= B_reg(7 downto 0);
-                     case res(1 downto 0) is
-                         when "00" => data_mem_3_we <= '1';
-                         when "01" => data_mem_2_we <= '1';
-                         when "10" => data_mem_1_we <= '1';
-                         when "11" => data_mem_0_we <= '1';
-                         when others =>
-                     end case;
+                     if p_bit = '1' then
+                         case res(1 downto 0) is
+                             when "00" => data_mem_3_we <= '1';
+                             when "01" => data_mem_2_we <= '1';
+                             when "10" => data_mem_1_we <= '1';
+                             when "11" => data_mem_0_we <= '1';
+                             when others =>
+                         end case;
+                     else
+                         case A(1 downto 0) is
+                             when "00" => data_mem_3_we <= '1';
+                             when "01" => data_mem_2_we <= '1';
+                             when "10" => data_mem_1_we <= '1';
+                             when "11" => data_mem_0_we <= '1';
+                             when others =>
+                        end case;                        
+                     end if;
                      
                      when strh => 
                       data_mem_0_data_out <= B_reg(7 downto 0);
                       data_mem_1_data_out <= B_reg(15 downto 8);
                       data_mem_2_data_out <= B_reg(7 downto 0);
                       data_mem_3_data_out <= B_reg(15 downto 8);
-                      case res(1) is
-                       when '1' => data_mem_0_we <= '1'; data_mem_1_we <= '1';
-                       when '0' => data_mem_2_we <= '1'; data_mem_3_we <= '1';
-                       when others =>
-                      end case;
+                      if p_bit = '1' then 
+                          case res(1) is
+                           when '1' => data_mem_0_we <= '1'; data_mem_1_we <= '1';
+                           when '0' => data_mem_2_we <= '1'; data_mem_3_we <= '1';
+                           when others =>
+                          end case;
+                      else
+                          case A(1) is
+                           when '1' => data_mem_0_we <= '1'; data_mem_1_we <= '1';
+                           when '0' => data_mem_2_we <= '1'; data_mem_3_we <= '1';
+                           when others =>
+                          end case;                      
+                      end if;
                       
                      when str =>
                       data_mem_0_data_out <= B_reg(7 downto 0);
@@ -532,33 +555,69 @@ begin
                 if i_decoded = ldr then
                     DR <= data_mem_data_in ;
                 elsif i_decoded = ldrb then
-                    case res(1 downto 0) is
-                        when "00" => DR <= x"000000" & data_mem_3_data_in;
-                        when "01" => DR <= x"000000" & data_mem_2_data_in;
-                        when "10" => DR <= x"000000" & data_mem_1_data_in;
-                        when "11" => DR <= x"000000" & data_mem_0_data_in;
-                        when others =>
-                    end case;
+                    if p_bit = '1' then
+                        case res(1 downto 0) is
+                            when "00" => DR <= x"000000" & data_mem_3_data_in;
+                            when "01" => DR <= x"000000" & data_mem_2_data_in;
+                            when "10" => DR <= x"000000" & data_mem_1_data_in;
+                            when "11" => DR <= x"000000" & data_mem_0_data_in;
+                            when others =>
+                        end case;
+                    else
+                        case A(1 downto 0) is
+                            when "00" => DR <= x"000000" & data_mem_3_data_in;
+                            when "01" => DR <= x"000000" & data_mem_2_data_in;
+                            when "10" => DR <= x"000000" & data_mem_1_data_in;
+                            when "11" => DR <= x"000000" & data_mem_0_data_in;
+                            when others =>
+                        end case;                    
+                    end if;
                  elsif i_decoded = ldrh then
-                    case res(1) is
-                     when '1' => DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in;
-                     when '0' => DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in;
-                     when others =>
-                    end case;                     
+                    if p_bit = '1' then
+                        case res(1) is
+                         when '1' => DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in;
+                         when '0' => DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in;
+                         when others =>
+                        end case;      
+                    else
+                        case A(1) is
+                         when '1' => DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in;
+                         when '0' => DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in;
+                         when others =>
+                        end case;                    
+                    end if;               
                  elsif i_decoded = ldrsb then 
-                    case res(1 downto 0) is
-                        when "11" => if data_mem_0_data_in(7) = '0' then DR <= x"000000" & data_mem_0_data_in; else DR <= x"ffffff" & data_mem_0_data_in; end if;
-                        when "10" => if data_mem_1_data_in(7) = '0' then DR <= x"000000" & data_mem_1_data_in; else DR <= x"ffffff" & data_mem_1_data_in; end if;
-                        when "01" => if data_mem_2_data_in(7) = '0' then DR <= x"000000" & data_mem_2_data_in; else DR <= x"ffffff" & data_mem_2_data_in; end if;
-                        when "00" => if data_mem_3_data_in(7) = '0' then DR <= x"000000" & data_mem_3_data_in; else DR <= x"ffffff" & data_mem_3_data_in; end if;
-                        when others =>
-                    end case;                   
+                    if p_bit = '1' then
+                        case res(1 downto 0) is
+                            when "11" => if data_mem_0_data_in(7) = '0' then DR <= x"000000" & data_mem_0_data_in; else DR <= x"ffffff" & data_mem_0_data_in; end if;
+                            when "10" => if data_mem_1_data_in(7) = '0' then DR <= x"000000" & data_mem_1_data_in; else DR <= x"ffffff" & data_mem_1_data_in; end if;
+                            when "01" => if data_mem_2_data_in(7) = '0' then DR <= x"000000" & data_mem_2_data_in; else DR <= x"ffffff" & data_mem_2_data_in; end if;
+                            when "00" => if data_mem_3_data_in(7) = '0' then DR <= x"000000" & data_mem_3_data_in; else DR <= x"ffffff" & data_mem_3_data_in; end if;
+                            when others =>
+                        end case;      
+                    else
+                        case A(1 downto 0) is
+                            when "11" => if data_mem_0_data_in(7) = '0' then DR <= x"000000" & data_mem_0_data_in; else DR <= x"ffffff" & data_mem_0_data_in; end if;
+                            when "10" => if data_mem_1_data_in(7) = '0' then DR <= x"000000" & data_mem_1_data_in; else DR <= x"ffffff" & data_mem_1_data_in; end if;
+                            when "01" => if data_mem_2_data_in(7) = '0' then DR <= x"000000" & data_mem_2_data_in; else DR <= x"ffffff" & data_mem_2_data_in; end if;
+                            when "00" => if data_mem_3_data_in(7) = '0' then DR <= x"000000" & data_mem_3_data_in; else DR <= x"ffffff" & data_mem_3_data_in; end if;
+                            when others =>
+                        end case;                        
+                    end if;             
                  elsif i_decoded = ldrsh then
-                    case res(1) is
-                        when '1' => if data_mem_1_data_in(7) = '0' then DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in; else DR <= x"ffff" & data_mem_1_data_in & data_mem_0_data_in; end if;
-                        when '0' => if data_mem_3_data_in(7) = '0' then DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in; else DR <= x"ffff" & data_mem_3_data_in & data_mem_2_data_in; end if;
-                        when others =>
-                    end case;                   
+                    if p_bit = '1' then
+                        case res(1) is
+                            when '1' => if data_mem_1_data_in(7) = '0' then DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in; else DR <= x"ffff" & data_mem_1_data_in & data_mem_0_data_in; end if;
+                            when '0' => if data_mem_3_data_in(7) = '0' then DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in; else DR <= x"ffff" & data_mem_3_data_in & data_mem_2_data_in; end if;
+                            when others =>
+                        end case; 
+                    else
+                        case A(1) is
+                            when '1' => if data_mem_1_data_in(7) = '0' then DR <= x"0000" & data_mem_1_data_in & data_mem_0_data_in; else DR <= x"ffff" & data_mem_1_data_in & data_mem_0_data_in; end if;
+                            when '0' => if data_mem_3_data_in(7) = '0' then DR <= x"0000" & data_mem_3_data_in & data_mem_2_data_in; else DR <= x"ffff" & data_mem_3_data_in & data_mem_2_data_in; end if;
+                            when others =>
+                        end case;                     
+                    end if;                  
                  end if;
             when mem2RF =>
                 RF_wr_1_addr_inp <= IR(15 downto 12);
@@ -603,135 +662,137 @@ begin
 end process;
 end cpu_arch;
 
---library IEEE;
---use IEEE.STD_LOGIC_1164.ALL;
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
 
----- Uncomment the following library declaration if using
----- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
---use ieee.std_logic_unsigned.all;
+-- Uncomment the following library declaration if using
+-- arithmetic functions with Signed or Unsigned values
+use IEEE.NUMERIC_STD.ALL;
+use ieee.std_logic_unsigned.all;
 
---entity LED_Display is
---    port (
---        disp_choice :in std_logic_vector(3 downto 0);
---        program_address, program_instr, data_address, data_stored, data_retrieved, state, register_val : in  std_logic_vector(31 downto 0);
---        led_output : out std_logic_vector(15 downto 0)
---    );
---end LED_Display;
+entity LED_Display is
+    port (
+        disp_choice,wr_addr_inp :in std_logic_vector(3 downto 0);
+        program_address, program_instr, data_address, data_stored, data_retrieved, state, register_val : in  std_logic_vector(31 downto 0);
+        led_output : out std_logic_vector(15 downto 0)
+    );
+end LED_Display;
 
---architecture display of LED_display is
---begin
---    led_output <= state(15 downto 0) when disp_choice = "0000"
---                else program_address(31 downto 16) when disp_choice = "1001"
---                else program_address(15 downto 0) when disp_choice = "0001"
---                else program_instr(31 downto 16) when disp_choice = "1010"
---                else program_instr(15 downto 0) when disp_choice = "0010"
---                else data_address(31 downto 16) when disp_choice = "1011"
---                else data_address(15 downto 0) when disp_choice = "0011"
---                else data_stored(31 downto 16) when disp_choice = "1100"
---                else data_stored(15 downto 0) when disp_choice = "0100"
---                else data_retrieved(31 downto 16) when disp_choice = "1101"
---                else data_retrieved(15 downto 0) when disp_choice = "0101"
---                else register_val(31 downto 16) when disp_choice = "1110"
---                else register_val(15 downto 0) when disp_choice = "0110"
---                else "0000000000000000";
---end display;
+architecture display of LED_display is
+begin
+    led_output <= state(15 downto 0) when disp_choice = "0000"
+                else program_address(31 downto 16) when disp_choice = "1001"
+                else program_address(15 downto 0) when disp_choice = "0001"
+                else program_instr(31 downto 16) when disp_choice = "1010"
+                else program_instr(15 downto 0) when disp_choice = "0010"
+                else data_address(31 downto 16) when disp_choice = "1011"
+                else data_address(15 downto 0) when disp_choice = "0011"
+                else data_stored(31 downto 16) when disp_choice = "1100"
+                else data_stored(15 downto 0) when disp_choice = "0100"
+                else data_retrieved(31 downto 16) when disp_choice = "1101"
+                else data_retrieved(15 downto 0) when disp_choice = "0101"
+                else register_val(31 downto 16) when disp_choice = "1110"
+                else register_val(15 downto 0) when disp_choice = "0110"
+                else X"000" & wr_addr_inp when disp_choice = "0111"
+                else "0000000000000000";
+end display;
 
---library IEEE;
---use IEEE.STD_LOGIC_1164.ALL;
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
 
----- Uncomment the following library declaration if using
----- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
---use ieee.std_logic_unsigned.all;
+-- Uncomment the following library declaration if using
+-- arithmetic functions with Signed or Unsigned values
+use IEEE.NUMERIC_STD.ALL;
+use ieee.std_logic_unsigned.all;
 
---entity frequency_divider is
---    port(
---        clk : in std_logic;
---        clk_divided : out std_logic
---    );
---end frequency_divider;
+entity frequency_divider is
+    port(
+        clk : in std_logic;
+        clk_divided : out std_logic
+    );
+end frequency_divider;
 
---architecture frequency_divider_arch of frequency_divider is
---signal clk_counter :  integer := 0;
---signal clk_divided_signal : std_logic;
---begin
---    process(clk)
---    begin
---        if rising_edge(clk) then
---            clk_counter <= clk_counter + 1;
---        end if;
---        if (clk_counter = 500000) then
---            clk_counter <= 0;
---            clk_divided_signal <= not clk_divided_signal;
---        end if;
---    end process;
---    clk_divided <= clk_divided_signal;
---end frequency_divider_arch;
+architecture frequency_divider_arch of frequency_divider is
+signal clk_counter :  integer := 0;
+signal clk_divided_signal : std_logic;
+begin
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            clk_counter <= clk_counter + 1;
+        end if;
+        if (clk_counter = 500000) then
+            clk_counter <= 0;
+            clk_divided_signal <= not clk_divided_signal;
+        end if;
+    end process;
+    clk_divided <= clk_divided_signal;
+end frequency_divider_arch;
 
---library IEEE;
---use IEEE.STD_LOGIC_1164.ALL;
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
 
----- Uncomment the following library declaration if using
----- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
---use ieee.std_logic_unsigned.all;
+-- Uncomment the following library declaration if using
+-- arithmetic functions with Signed or Unsigned values
+use IEEE.NUMERIC_STD.ALL;
+use ieee.std_logic_unsigned.all;
 
---entity debouncer is
---    port(
---        reset_button,step_button,go_button,instr_button,clk_divided : in std_logic;
---        reset_debounced,step_debounced,go_debounced,instr_debounced : out std_logic
---    );
---end debouncer;
+entity debouncer is
+    port(
+        reset_button,step_button,go_button,instr_button,clk_divided : in std_logic;
+        reset_debounced,step_debounced,go_debounced,instr_debounced : out std_logic
+    );
+end debouncer;
 
---architecture debouncer_arch of debouncer is
---signal reset_signal, step_signal, go_signal, instr_signal : std_logic := '0';
+architecture debouncer_arch of debouncer is
+signal reset_signal, step_signal, go_signal, instr_signal : std_logic := '0';
 
---begin
---    process(clk_divided)
---    begin
---        if rising_edge(clk_divided) then
---            reset_signal <= reset_button;
---            step_signal <= step_button;
---            go_signal <= go_button;
---            instr_signal <= instr_button;
---        end if;
---    end process;
---    instr_debounced <= instr_signal;
---    reset_debounced <= reset_signal;
---    step_debounced <= step_signal;
---    go_debounced <= go_signal;
---end debouncer_arch;
+begin
+    process(clk_divided)
+    begin
+        if rising_edge(clk_divided) then
+            reset_signal <= reset_button;
+            step_signal <= step_button;
+            go_signal <= go_button;
+            instr_signal <= instr_button;
+        end if;
+    end process;
+    instr_debounced <= instr_signal;
+    reset_debounced <= reset_signal;
+    step_debounced <= step_signal;
+    go_debounced <= go_signal;
+end debouncer_arch;
 
 
---library IEEE;
---use IEEE.STD_LOGIC_1164.ALL;
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
 
----- Uncomment the following library declaration if using
----- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
---use ieee.std_logic_unsigned.all;
---entity main is 
---port(
---    clk,reset,step,go,instr:in std_logic;
---    program_select:in std_logic_vector(2 downto 0);
---    disp_choice:in std_logic_vector(3 downto 0);
---    register_select: in std_logic_vector(3 downto 0);
---    LED:out std_logic_vector(15 downto 0)
---);
---end main;
+-- Uncomment the following library declaration if using
+-- arithmetic functions with Signed or Unsigned values
+use IEEE.NUMERIC_STD.ALL;
+use ieee.std_logic_unsigned.all;
+entity main is 
+port(
+    clk,reset,step,go,instr:in std_logic;
+    program_select:in std_logic_vector(2 downto 0);
+    disp_choice:in std_logic_vector(3 downto 0);
+    register_select: in std_logic_vector(3 downto 0);
+    LED:out std_logic_vector(15 downto 0)
+);
+end main;
 
---architecture behavioral of main is
---signal reset_temp,we,step_temp,go_temp,slow_clk,instr_temp: std_logic;
---signal instruction,data_in,add_to_data_m,data_out  : std_logic_vector(31 downto 0); --:= "00000000000000000000000000000000";
---signal add_to_program_m,state_temp,register_val :std_logic_vector(31 downto 0);
---signal state : std_logic_vector(1 downto 0);
---signal RF_data_out : std_logic_vector(31 downto 0);
+architecture behavioral of main is
+signal reset_temp,we,step_temp,go_temp,slow_clk,instr_temp: std_logic;
+signal instruction,data_in,add_to_data_m,data_out  : std_logic_vector(31 downto 0); --:= "00000000000000000000000000000000";
+signal add_to_program_m,state_temp,register_val :std_logic_vector(31 downto 0);
+signal state : std_logic_vector(1 downto 0);
+signal wr_addr_inp:std_logic_vector(3 downto 0);
+signal RF_data_out : std_logic_vector(31 downto 0);
 
---begin
---state_temp <= "000000000000000000000000000000" & state(1 downto 0);
---clk_slow:entity work.frequency_divider (frequency_divider_arch) PORT MAP(clk,slow_clk);
---debounce:entity work.debouncer (debouncer_arch) PORT MAP(reset,step,go,instr,slow_clk,reset_temp,step_temp,go_temp,instr_temp);
---cpu:entity work.CPU(CPU_arch) PORT MAP(clk,reset_temp,step_temp,go_temp,instr_temp,program_select,register_select,add_to_program_m,add_to_data_m,data_out,RF_data_out,instruction,state);
---dis:entity work.LED_display(display) PORT MAP(disp_choice,add_to_program_m,instruction,add_to_data_m,data_out,data_in,state_temp,RF_data_out,LED);
---end behavioral; 
+begin
+state_temp <= "000000000000000000000000000000" & state(1 downto 0);
+clk_slow:entity work.frequency_divider (frequency_divider_arch) PORT MAP(clk,slow_clk);
+debounce:entity work.debouncer (debouncer_arch) PORT MAP(reset,step,go,instr,slow_clk,reset_temp,step_temp,go_temp,instr_temp);
+cpu:entity work.CPU(CPU_arch) PORT MAP(clk,reset_temp,step_temp,go_temp,instr_temp,program_select,register_select,add_to_program_m,add_to_data_m,data_out,RF_data_out,instruction,state,wr_addr_inp);
+dis:entity work.LED_display(display) PORT MAP(disp_choice,wr_addr_inp,add_to_program_m,instruction,add_to_data_m,data_out,data_in,state_temp,RF_data_out,LED);
+end behavioral; 

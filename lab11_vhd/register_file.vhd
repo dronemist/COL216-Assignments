@@ -58,37 +58,37 @@ rd_0_data_out <= register_file(to_integer(unsigned(rd_0_addr_inp)));
 rd_1_data_out <= register_file(to_integer(unsigned(rd_1_addr_inp)));
 rd_2_data_out <= register_file(to_integer(unsigned(rd_2_addr_inp)));
 
---process(clk)
---begin
---    if rising_edge(clk) then
---        if (wr_1_we = '1' and not(wr_1_addr_inp = "1111")) then
---            register_file(to_integer(unsigned(wr_1_addr_inp))) <= wr_1_data_inp;   
---        end if;
---        if ((wr_1_we = '1') and (pc_wea = '0') and (wr_1_addr_inp = "1111")) then
---            register_file(15) <= wr_1_data_inp;
---        elsif pc_wea = '1' then 
---            register_file(15) <= pc_data_in;
---        end if;
+process(clk)
+begin
+    if rising_edge(clk) then
+        if (wr_1_we = '1' and not(wr_1_addr_inp = "1111")) then
+            register_file(to_integer(unsigned(wr_1_addr_inp))) <= wr_1_data_inp;   
+        end if;
+        if ((wr_1_we = '1') and (pc_wea = '0') and (wr_1_addr_inp = "1111")) then
+            register_file(15) <= wr_1_data_inp;
+        elsif pc_wea = '1' then 
+            register_file(15) <= pc_data_in;
+        end if;
         
-        register_file(0) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0000";
-        register_file(1) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0001";
-        register_file(2) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0010";
-        register_file(3) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0011";
-        register_file(4) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0100";
-        register_file(5) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0101";
-        register_file(6) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0110";
-        register_file(7) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0111";
-        register_file(8) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1000";
-        register_file(9) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1001";
-        register_file(10) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1010";
-        register_file(11) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1011";
-        register_file(12) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1100";
-        register_file(13) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1101";
-        register_file(14) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1110";
-        register_file(15) <= wr_1_data_inp when (wr_1_we = '1') and (pc_wea = '0') and wr_1_addr_inp = "1111"
-                          else  pc_data_in when (pc_wea = '1');
---    end if;
---end process;
+--        register_file(0) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0000";
+--        register_file(1) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0001";
+--        register_file(2) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0010";
+--        register_file(3) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0011";
+--        register_file(4) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0100";
+--        register_file(5) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0101";
+--        register_file(6) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0110";
+--        register_file(7) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "0111";
+--        register_file(8) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1000";
+--        register_file(9) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1001";
+--        register_file(10) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1010";
+--        register_file(11) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1011";
+--        register_file(12) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1100";
+--        register_file(13) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1101";
+--        register_file(14) <= wr_1_data_inp when (wr_1_we = '1') and wr_1_addr_inp = "1110";
+--        register_file(15) <= wr_1_data_inp when (wr_1_we = '1') and (pc_wea = '0') and wr_1_addr_inp = "1111"
+--                          else  pc_data_in when (pc_wea = '1');
+    end if;
+end process;
 pc_data_out <= register_file(15);
 --register_file(15) <= pc_data_in when (pc_wea = '1');
 end Behavioral;
