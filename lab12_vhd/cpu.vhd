@@ -29,7 +29,7 @@ use work.common_type.all;
 
 entity CPU is
   Port (
-    clk,reset,step,go,instr: in std_logic;
+    clk,reset,step,go,instr,irq: in std_logic;
     program_select: in std_logic_vector(2 downto 0);
     register_select: in std_logic_vector(3 downto 0);
     add_to_program_m,add_to_data_m,data_out, RF_data_out, instruction_disp: out std_logic_vector(31 downto 0);
@@ -118,6 +118,7 @@ component execution_state_FSM
 end component;
 component ALU_and_flags
         Port (
+			 clk : in std_logic;
              op_1: in std_logic_vector(31 downto 0);
              op_2: in std_logic_vector(31 downto 0);
              op_3: in std_logic_vector(63 downto 0);
@@ -234,6 +235,7 @@ program_memory_instance: program_memory port map(
                            spo=> instruction
                        );
 ALU_instance: ALU_and_flags port map(
+						clk => clk,
                         op_1 => alu_op_1,
                         op_2 => alu_op_2,
                         op_3 => mla_result_reg,
