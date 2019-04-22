@@ -69,6 +69,8 @@ instr_class_signal <= halt when instruction = X"00000000"
                else branch when F_field = "10"
                else unknown;               
 i_decoded <= 
+    msr when instruction(27 downto 23) = "00010" and instruction(21 downto 4) = "101001111100000000" 
+    mrs when instruction(27 downto 23) = "00010" and instruction(21 downto 16) = "001111" and instruction(11 downto 0) = "000000000000"
     and_instr when instr_class_signal = DP and opcode = "0000"
     else eor when instr_class_signal = DP and opcode = "0001"
     else sub when instr_class_signal = DP and opcode = "0010"
