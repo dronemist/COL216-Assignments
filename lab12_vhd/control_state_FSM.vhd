@@ -36,6 +36,7 @@ entity control_state_FSM is
 Port ( 
     instr_class : in instr_class_type;
     reset,ld_bit,green_flag,clk :in std_logic;
+	exception : in exception_type;
     red_flag : out std_logic;
     predicate_bit:in std_logic;
     control_state: out control_state_type
@@ -49,12 +50,14 @@ control_state <= curr_control_state;
 red_flag <= '1' when  curr_control_state = mem_wr or curr_control_state = halt or curr_control_state = skip
 else '0';
 -- control_state state transitions
-process(clk,reset)
+process(clk)
 begin
-    if reset = '1' then
-        curr_control_state <= fetch;
-    elsif rising_edge(clk) then
-        if green_flag = '1' then
+    if rising_edge(clk) then
+		-- if reset = '1' then
+			-- curr_control_state <= exception_handler;
+		if not(exception = None) then
+			curr_control_state <= exception_handler;
+        elsif green_flag = '1' then
             case curr_control_state is
                 when fetch => 
                     curr_control_state <= decode;

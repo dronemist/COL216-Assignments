@@ -12,6 +12,7 @@ type execution_state_type is (initial,onestep,oneinstr,cont,done);
 type control_state_type is (fetch,decode,decode_shift,arith,mult,alu_mult,res2RF_1,res2RF_2,addr,brn,halt,res2RF,mem_wr,mem_rd,mem2RF,exception_handler,skip);
 type alu_op_type is(op_and,op_xor,sub,rsb,add,adc,sbc,rsc,orr,mov,bic,mvn,mul);
 type mode_type is (user, privileged);
+type exception_type is (Reset, IRQ, Undefined, SWI, None); 
 end common_type; 
 
 library IEEE;
@@ -83,6 +84,9 @@ signal mode : mode_type;
 signal usr_mode_encoding, supervisor_mode_encoding : std_logic_vector(5 downto 0);
 signal cpsr, spsr_svc : std_logic_vector(31 downto 0); 
 signal reset_addr, undef_addr, swi_addr, irq_addr : std_logic_vector(31 downto 0);
+signal reset_on_prev_state: std_logic;
+signal exception, exception_signal : exception_type;
+
 component data_memory
         Port (
             a: in std_logic_vector(7 downto 0);
@@ -102,6 +106,7 @@ component control_state_FSM
         Port (
             instr_class : in instr_class_type;
             reset,ld_bit,green_flag,clk :in std_logic;
+			exception : in exception_type;
             red_flag : out std_logic;
             predicate_bit:in std_logic;
             control_state: out control_state_type
@@ -275,7 +280,8 @@ control_state_instance: control_state_FSM port map(
             clk => clk,
             red_flag => red_flag,
             predicate_bit => predicate_bit,
-            control_state => control_state
+            control_state => control_state,
+			exception => exception
      );
 execution_state_instance: execution_state_FSM port map(
             step => step,
@@ -404,6 +410,11 @@ swi_addr <= x"00000008";
 irq_addr <= x"00000018";
 usr_mode_encoding <= "10000";
 supervisor_mode_encoding <= "10011"; 
+exception <= Reset when reset = '1'
+			else SWI when i_decoded = swi
+			else Undefined when i_decoded = unknown
+			else IRQ when --dont know its condition
+			else None
 -- cpsr(27 downto 8) <= x"00000" & "0";
 -- cpsr(6 downto 5) <= "00";
 -- spsr(27 downto 8) <= x"00000" & "0";
@@ -411,13 +422,11 @@ supervisor_mode_encoding <= "10011";
 
 --IR <= instruction when (control_state = fetch);
 -- final process
-process(clk, reset,green_flag)
+process(clk, green_flag)
 begin
-    if reset = '1' then
-        RF_pc_data_in <= "0000000000000000000000" &  program_select(2 downto 0)  & "0000000";
-        RF_pc_wea <= '1';
-    elsif rising_edge(clk) then
+    if rising_edge(clk) then
     if green_flag = '1' then
+		exception_signal <= exception;
         if RF_pc_wea = '1' then
             RF_pc_wea <= '0';
         end if;
@@ -674,8 +683,27 @@ begin
                 RF_pc_wea <= '1';
 				
 			when exception_handler => 
+				RF_pc_wea <= '1';
+				CPSR(4 downto 0) <= supervisor_mode_encoding;
+				CPSR(7) <= '1';
+				-- saving CPSR, pc remaining
+				case exception_signal is
+					when Reset => 
+						RF_pc_data_in <= reset_addr;
+						
+					when SWI => 
+						RF_pc_data_in <= swi_addr;
+						
+					when Undefined => 
+						RF_pc_data_in <= undef_addr;
+						
+					when IRQ =>
+						RF_pc_data_in <= irq_addr;
+					
+					when others =>
+						-- do nothing
 				
-			
+				end case;
             when others =>
                     -- do nothing    
         end case;
