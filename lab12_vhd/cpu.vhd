@@ -505,6 +505,9 @@ begin
                 if not(i_decoded = cmp or i_decoded = cmn or i_decoded = tst or i_decoded = teq) then 
                     RF_wr_1_we <= '1';    
                 end if;
+                if i_decoded = mov and s_bit='1' then
+                    CPSR <= spsr_svc;
+                end if ;
             when addr =>
                 --alu_op_1 <= A;
                 --alu_op_2 <= "00000000000000000000" & imm12;
@@ -651,10 +654,7 @@ begin
             when mem2RF =>
                 RF_wr_1_addr_inp <= IR(15 downto 12);
                 RF_wr_1_data_inp <= DR;
-                RF_wr_1_we <= '1';
-                if i_decoded = mov and s_bit='1' then
-                    CPSR <= spsr_svc;
-                end if ;           
+                RF_wr_1_we <= '1';           
             when brn =>
                 --alu_op_1 <= X"000000" & "0" & pc(9 downto 2);
                 --alu_op_2 <= std_logic_vector(to_signed((to_integer(signed(IR(23 downto 0)))),32));
