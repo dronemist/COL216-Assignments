@@ -60,7 +60,7 @@ begin
 			-- curr_control_state <= exception_handler;
 		if not(exception = None) then
             curr_control_state <= exception_handler;
-            mode <= supe
+            curr_mode <= supervsior;
         elsif green_flag = '1' then
             case curr_control_state is
                 when fetch => 

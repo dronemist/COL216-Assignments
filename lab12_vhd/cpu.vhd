@@ -140,7 +140,7 @@ end component;
 component register_file
         Port ( 
             clk: in std_logic;
-			mode: mode_type;
+			mode: in mode_type;
             rd_0_addr_inp: in std_logic_vector(3 downto 0);-- rd_1 signifies read port 1
             rd_0_data_out :out std_logic_vector(31 downto 0);
             rd_1_addr_inp: in std_logic_vector(3 downto 0);-- rd_1 signifies read port 1
