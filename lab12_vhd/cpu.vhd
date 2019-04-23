@@ -109,6 +109,7 @@ component control_state_FSM
 			exception : in exception_type;
             red_flag : out std_logic;
             predicate_bit:in std_logic;
+            mode: out mode_type;
             control_state: out control_state_type
         );
 end component;
@@ -275,6 +276,7 @@ RF_instance: register_file port map(
 control_state_instance: control_state_FSM port map(
             instr_class => instr_class,
             reset => reset,
+            mode => mode,
             ld_bit => ld_bit,
             green_flag => green_flag,
             clk => clk,
@@ -649,7 +651,10 @@ begin
             when mem2RF =>
                 RF_wr_1_addr_inp <= IR(15 downto 12);
                 RF_wr_1_data_inp <= DR;
-                RF_wr_1_we <= '1';           
+                RF_wr_1_we <= '1';
+                if i_decoded = mov and s_bit='1' then
+                    CPSR <= spsr_svc;
+                end if ;           
             when brn =>
                 --alu_op_1 <= X"000000" & "0" & pc(9 downto 2);
                 --alu_op_2 <= std_logic_vector(to_signed((to_integer(signed(IR(23 downto 0)))),32));
@@ -693,13 +698,13 @@ begin
 						
 					when SWI => 
 						RF_pc_data_in <= swi_addr;
-						
+						spsr_svc <= CPSR;
 					when Undefined => 
 						RF_pc_data_in <= undef_addr;
-						
+						spsr_svc <= CPSR;
 					when IRQ =>
 						RF_pc_data_in <= irq_addr;
-					
+                        spsr_svc <= CPSR;
 					when others =>
 						-- do nothing
 				

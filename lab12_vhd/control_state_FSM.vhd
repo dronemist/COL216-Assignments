@@ -38,6 +38,7 @@ Port (
     reset,ld_bit,green_flag,clk :in std_logic;
 	exception : in exception_type;
     red_flag : out std_logic;
+    mode: out mode_type;
     predicate_bit:in std_logic;
     control_state: out control_state_type
 );
@@ -45,7 +46,9 @@ end control_state_FSM;
 
 architecture Behavioral of control_state_FSM is
 signal curr_control_state : control_state_type;
+signal curr_mode: mode_type;
 begin
+mode <= curr_mode; 
 control_state <= curr_control_state;
 red_flag <= '1' when  curr_control_state = mem_wr or curr_control_state = halt or curr_control_state = skip
 else '0';
@@ -56,7 +59,8 @@ begin
 		-- if reset = '1' then
 			-- curr_control_state <= exception_handler;
 		if not(exception = None) then
-			curr_control_state <= exception_handler;
+            curr_control_state <= exception_handler;
+            mode <= supe
         elsif green_flag = '1' then
             case curr_control_state is
                 when fetch => 
