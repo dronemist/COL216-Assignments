@@ -49,7 +49,7 @@ entity ALU_and_flags is
 end ALU_and_flags;
 
 architecture Behavioral of ALU_and_flags is
-signal z_flag,v_flag,c_flag,n_flag,c_32,c_31:std_logic;
+signal z_flag,v_flag,c_flag,n_flag,c_32,c_31:std_logic := '0';
 signal op_1_signal, op_2_signal : std_logic_vector(31 downto 0);
 signal res_temp:std_logic_vector(31 downto 0);
 begin
@@ -113,7 +113,7 @@ begin
 			
 		end if;
 	end if;
-end process
+end process;
         
 z_flag_output <= z_flag;       
 c_flag_output <= c_flag;       

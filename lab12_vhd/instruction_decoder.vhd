@@ -63,6 +63,7 @@ opc <= instruction(25 downto 24);
 instr_class <= instr_class_signal;  
 instr_class_signal <= halt when instruction = X"00000000"
 			   else swi when instruction(27 downto 24) = "1111"	
+			   else psr when (instruction(27 downto 23) = "00010" and instruction(21 downto 4) = "101001111100000000") or (instruction(27 downto 23) = "00010" and instruction(21 downto 16) = "001111" and instruction(11 downto 0) = "000000000000")
                else DP_mull when (F_field = "00" and I_bit = '0' and sh ="00" and instruction(7) = '1' and instruction(4) = '1' and(opcode(3 downto 1)="000" or opcode(3 downto 2)="01"))
                else DT when F_field = "01" or (F_field = "00" and I_bit = '0' and instruction(7) = '1' and instruction(4) = '1') 
                else DP when F_field = "00"
@@ -70,8 +71,8 @@ instr_class_signal <= halt when instruction = X"00000000"
                else unknown;               
 i_decoded <= 
     msr when instruction(27 downto 23) = "00010" and instruction(21 downto 4) = "101001111100000000" 
-    mrs when instruction(27 downto 23) = "00010" and instruction(21 downto 16) = "001111" and instruction(11 downto 0) = "000000000000"
-    and_instr when instr_class_signal = DP and opcode = "0000"
+    else mrs when instruction(27 downto 23) = "00010" and instruction(21 downto 16) = "001111" and instruction(11 downto 0) = "000000000000"
+    else and_instr when instr_class_signal = DP and opcode = "0000"
     else eor when instr_class_signal = DP and opcode = "0001"
     else sub when instr_class_signal = DP and opcode = "0010"
     else rsb when instr_class_signal = DP and opcode = "0011"
