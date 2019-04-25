@@ -30,12 +30,11 @@ use work.common_type.all;
 
 entity CPU is
   Port (
-    clk,exception_reset,step,go,instr,irq,reset: in std_logic;
+    clk,exception_reset,step,go,instr,reset: in std_logic;
     program_select: in std_logic_vector(2 downto 0);
     register_select: in std_logic_vector(3 downto 0);
-    add_to_program_m,add_to_data_m,data_out, RF_data_out, instruction_disp: out std_logic_vector(31 downto 0);
-    state: out std_logic_vector(1 downto 0);
-    wr_addr_inp: out std_logic_vector(3 downto 0)
+    add_to_program_m,add_to_data_m,data_out, data_in, RF_data_out, instruction_disp: out std_logic_vector(31 downto 0);
+    memory_0_wea, memory_1_wea, memory_2_wea, memory_3_wea : out std_logic
   );
 end CPU;
 
@@ -89,6 +88,7 @@ signal reset_addr, undef_addr, swi_addr, irq_addr : std_logic_vector(31 downto 0
 signal reset_on_prev_state,is_valid: std_logic;
 signal exception, exception_signal : exception_type;
 signal m_field : std_logic_vector(4 downto 0);
+signal irq, irq_ack : std_logic;
 
 component data_memory
         Port (
@@ -198,7 +198,20 @@ component predicate_calculator is
   predicate: out std_logic
    );
 end component;
+component irq_generator is
+Port ( 
+    clk, irq_ack,reset : in std_logic; 
+    irq_output : out std_logic
+);
+end component;
 begin
+irq_generator_instance: irq_generator port map(
+    clk => clk,
+    irq_ack => irq_ack,
+    reset => reset,
+    irq_output => irq
+);
+
 predicate_instance: predicate_calculator port map(
     z_flag => CPSR(30),
     n_flag => CPSR(31),
@@ -325,15 +338,21 @@ adder_64_bit_instance: adder_64_bit port map(
                 is_signed => signed_mult_and_add,
                 add_result => mla_result
 );
-wr_addr_inp <="000" & predicate_bit;
+--wr_addr_inp <="000" & predicate_bit;
 rot_spec <= IR(11 downto 8);
 RF_data_out <= RF_rd_0_data_out;
 RF_rd_0_addr_inp <= register_select;
 type_of_shift <= IR(4);-- 0 when constant shift 1 when register specified shift      
 --state <= "00";     
---add_to_data_m <= data_mem_add_to_data_m;
+add_to_data_m <= data_mem_add_to_data_m;
 data_mem_data_in <= data_mem_3_data_in & data_mem_2_data_in & data_mem_1_data_in & data_mem_0_data_in;
-data_out <= data_mem_data_out;
+data_out <= data_mem_3_data_out & data_mem_2_data_out & data_mem_1_data_out & data_mem_0_data_out;
+data_in <= data_mem_data_in;
+memory_0_wea <= data_mem_0_we 
+memory_1_wea <= data_mem_1_we
+memory_2_wea <= data_mem_2_we
+memory_3_wea <= data_mem_3_we;
+--data_out <= data_mem_data_out;
 add_to_program_m <= PC;                       
 imm8 <= IR(7 downto 0);
 imm12 <= IR(11 downto 0);
@@ -347,7 +366,7 @@ p_bit <= IR(24);
 w_bit <= IR(21);
 link_bit <= IR(24);
 instruction_disp <= IR;
-is_valid <= '1' when mode = supervisor or (mode = user and control_state = addr and alu_result > X"000000FF")
+is_valid <= '1' when mode = supervisor or (mode = user and control_state = addr and ((alu_result > X"000000FF" and p_bit = '1') or (A > X"000000FF" and p_bit = '0')))
             else '0';
 --PC <= alu_result & "00" when control_state = fetch;
 RF_rd_1_addr_inp <= IR(11 downto 8) when control_state = decode and instr_class = DP_mull                    
@@ -387,8 +406,8 @@ alu_carry <= '1' when ((control_state = fetch) or (control_state = brn))
             else '0';
 alu_flag_wea <= '1' when control_state = arith OR control_state = res2RF_1
                             else '0';
-data_mem_add_to_data_m <= (res(31 downto 2) & "00") when ((control_state = mem_wr) or (control_state = mem_rd)) and p_bit = '1'
-                          else A when ((control_state = mem_wr) or (control_state = mem_rd)) and p_bit = '0';
+data_mem_add_to_data_m <= ( res(31 downto 2) & "00" ) when ((control_state = mem_wr) or (control_state = mem_rd)) and p_bit = '1'
+                          else ( A(31 downto 2) & "00" ) when ((control_state = mem_wr) or (control_state = mem_rd)) and p_bit = '0';
 
 shifter_input <= X"000000" & imm8 when ((control_state = decode_shift) and (I_bit = '1') and instr_class = DP)
 
@@ -426,6 +445,9 @@ exception <= Reset_exception when exception_reset = '1'
 			else Undefined when i_decoded = unknown and control_state = decode
 			else IRQ_exception when control_state = skip and (irq = '1') and (cpsr(7)='0')  --dont know its condition
 			else None;
+			
+irq_ack <= '1' when (control_state = exception_handler and exception = irq_exception)
+            else '0';
 -- cpsr(27 downto 8) <= x"00000" & "0";
 -- cpsr(6 downto 5) <= "00";
 -- spsr(27 downto 8) <= x"00000" & "0";
@@ -468,6 +490,7 @@ begin
                     RF_pc_wea <= '1';
                     RF_pc_data_in <= alu_result(29 downto 0) & "00";
                     IR <= instruction;
+                    
                 when decode =>
                     if i_decoded = mov then
                                 A <= X"00000000";
@@ -764,6 +787,97 @@ begin
 end process;
 end cpu_arch;
 
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+-- Uncomment the following library declaration if using
+-- arithmetic functions with Signed or Unsigned values
+use IEEE.NUMERIC_STD.ALL;
+use ieee.std_logic_unsigned.all;
+
+entity main_bus is 
+    port(
+        clk : IN std_logic;
+        reset, exception_reset, step, go, instr : IN std_logic;
+		-- disp_option : IN std_logic; --disp_option 0 for lower 16 bits and 1 for higher 16 bits
+        register_select : IN std_logic_vector(3 downto 0); 
+        PC, RF_data_out, instruction : out std_logic_vector(31 downto 0);
+		cathode_output, anode_output : std_logic_vector(6 downto 0)
+    );
+
+end main_bus;
+
+architecture main_bus_arch of main_bus is
+--signal data_mem_0_data_in,data_mem_0_data_out,data_mem_1_data_in,data_mem_1_data_out,data_mem_2_data_in,data_mem_2_data_out,data_mem_3_data_in,data_mem_3_data_out: std_logic_vector(7 downto 0);  
+---- 0 denotes the least significant 8 bits of data_memory
+--signal data_mem_data_out, data_mem_data_in : std_logic_vector(31 downto 0);
+--signal data_mem_add_to_data_m : std_logic_vector(31 downto 0);
+signal write_mem_0, write_mem_1, write_mem_2, write_mem_3 : std_logic;
+signal address : std_logic_vector(31 downto 0);
+signal read_data : std_logic_vector(31 downto 0);
+signal write_data : std_logic_vector(31 downto 0);
+signal cathode_reg : std_logic_vector(15 downto 0) := "FFFF";
+signal anode_reg : std_logic_vector(3 downto 0) := "1111";
+begin
+cpu:entity work.CPU(CPU_arch) PORT MAP( 
+                                        clk => clk,
+                                        reset => reset,
+                                        exception_reset => exception_reset,
+                                        step => step,
+                                        go => go,
+                                        instr => instr, 
+                                        program_select => "000",
+                                        register_select => register_select,
+                                        add_to_program_m => PC,
+                                        add_to_data_m => address,
+                                        data_out => write_data,
+                                        RF_data_out => RF_data_out,
+                                        instruction_disp => instruction,
+                                        data_in => read_data, 
+										memory_0_wea => write_mem_0,
+										memory_1_wea => write_mem_1,
+										memory_2_wea => write_mem_2,
+										memory_3_wea => write_mem_3
+                                        );
+				
+component display is
+Port ( 
+    Num_to_be_displayed : IN std_logic_vector(15 downto 0);
+	anode_pattern : IN std_logic_vector(3 downto 0);
+	cathode_output : OUT std_logic_vector(6 downto 0);
+	anode_output : OUT std_logic_vector(3 downto 0)
+);
+end component;
+begin
+display_instance: display port map(
+    Num_to_be_displayed => cathode_reg,
+    anode_pattern => anode_reg,
+    cathode_output => cathode_output,
+    anode_output => anode_output
+);				
+
+process(clk)
+begin
+    if rising_edge(clk) then
+		if address = x"0000000" & "0100" then	
+			case (write_mem_1 & write_mem_0) is
+				when "11" => cathode_reg <= write_data(15 downto 0);
+				when "10" => cathode_reg(15 downto 8) <= write_data(7 downto 0);
+				when "01" => cathode_reg(7 downto 0) <= write_data(7 downto 0);
+				when others => --do nothing
+			end case;
+		elsif address = x"00000000" then
+			if write_mem_2 = '1' then
+				anode_reg <= write_data(7 downto 0);
+			end if;
+		end if;	
+    end if;
+end process;
+
+
+end main_bus_arch;
+
 --library IEEE;
 --use IEEE.STD_LOGIC_1164.ALL;
 
@@ -898,3 +1012,8 @@ end cpu_arch;
 --cpu:entity work.CPU(CPU_arch) PORT MAP(clk,reset_temp,step_temp,go_temp,instr_temp,program_select,register_select,add_to_program_m,add_to_data_m,data_out,RF_data_out,instruction,state,wr_addr_inp);
 --dis:entity work.LED_display(display) PORT MAP(disp_choice,wr_addr_inp,add_to_program_m,instruction,add_to_data_m,data_out,data_in,state_temp,RF_data_out,LED);
 --end behavioral; 
+
+
+
+
+
