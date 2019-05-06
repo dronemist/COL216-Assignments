@@ -30,8 +30,8 @@ ENTITY keypad_key_decoder IS
 		clk : IN std_logic;
 		keypad_driver : IN std_logic_vector(3 DOWNTO 0);
         keypad_row : IN std_logic_vector(3 DOWNTO 0);
-		key_pressed : OUT std_logic := 0;
-		keypad_key_decoded : OUT std_logic_vector(3 downto 0);
+		key_pressed : OUT std_logic;
+		keypad_key_decoded : OUT std_logic_vector(3 downto 0)
 		);
 END keypad_key_decoder;        
 
@@ -44,7 +44,7 @@ begin
 	if(rising_edge(clk)) then 
 		key_pressed_signal <= '1';
 		case keypad_row is
-			when "0111" => (
+			when "0111" => 
 							case keypad_driver IS
 								when "1110" => keypad_key_decoded <= x"A"; 
 								when "0111" => keypad_key_decoded <= x"1";
@@ -52,9 +52,9 @@ begin
 								when "1101" => keypad_key_decoded <= x"3";
 								when others => -- do nothing
 							end case;
-							);
+						
 							
-			when "1011" => (
+			when "1011" => 
 							case keypad_driver IS
 								when "1110" => keypad_key_decoded <= x"B"; 
 								when "0111" => keypad_key_decoded <= x"4";
@@ -62,9 +62,9 @@ begin
 								when "1101" => keypad_key_decoded <= x"6";
 								when others => -- do nothing
 							end case;
-							);
 							
-			when "0111" => (
+							
+			when "1101" =>
 							case keypad_driver IS
 								when "1110" => keypad_key_decoded <= x"C"; 
 								when "0111" => keypad_key_decoded <= x"7";
@@ -72,20 +72,15 @@ begin
 								when "1101" => keypad_key_decoded <= x"9";
 								when others => -- do nothing
 							end case;
-							);
 							
-			when "0111" => (
-							case keypad_driver IS
+							
+			when "1110" => 	case keypad_driver IS
 								when "1110" => keypad_key_decoded <= x"D"; 
 								when "0111" => keypad_key_decoded <= x"0";
 								when "1011" => keypad_key_decoded <= x"F";
 								when "1101" => keypad_key_decoded <= x"E";
 								when others => -- do nothing
 							end case;
-							);
-			
-			
-			
 			when "1111" =>  key_pressed_signal <= '0';
 			when others => -- do nothing
 		end case;

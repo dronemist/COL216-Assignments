@@ -874,7 +874,7 @@ PORT(
 	keypad_driver : IN std_logic_vector(3 DOWNTO 0);
 	keypad_row : IN std_logic_vector(3 DOWNTO 0);
 	key_pressed : OUT std_logic;
-	keypad_output : OUT std_logic_vector(3 downto 0)
+	keypad_key_decoded : OUT std_logic_vector(3 downto 0)
 	);
 end component;
 
@@ -919,7 +919,7 @@ keypad_driver_instance: keypad_driver_generator port map(
 keypad_key_decoder_instance: keypad_key_decoder port map(
 	clk => clk,
 	keypad_driver => keypad_driver_signal,
-	keypad_row => keypad_input,
+	keypad_row => keypad_row_input,
 	key_pressed => is_key_pressed,
 	keypad_key_decoded => keypad_key_decoded_signal
 );
@@ -962,158 +962,158 @@ end process;
 
 end main_bus_arch;
 
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
+--library IEEE;
+--use IEEE.STD_LOGIC_1164.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
-use IEEE.NUMERIC_STD.ALL;
-use ieee.std_logic_unsigned.all;
+--use IEEE.NUMERIC_STD.ALL;
+--use ieee.std_logic_unsigned.all;
 
-entity LED_Display is
-    port (
-        disp_choice,wr_addr_inp :in std_logic_vector(3 downto 0);
-        program_address, program_instr, data_address, data_stored, data_retrieved, state, register_val : in  std_logic_vector(31 downto 0);
-        led_output : out std_logic_vector(15 downto 0)
-    );
-end LED_Display;
+--entity LED_Display is
+--    port (
+--        disp_choice,wr_addr_inp :in std_logic_vector(3 downto 0);
+--        program_address, program_instr, data_address, data_stored, data_retrieved, state, register_val : in  std_logic_vector(31 downto 0);
+--        led_output : out std_logic_vector(15 downto 0)
+--    );
+--end LED_Display;
 
-architecture display of LED_display is
-begin
-    led_output <= state(15 downto 0) when disp_choice = "0000"
-                else program_address(31 downto 16) when disp_choice = "1001"
-                else program_address(15 downto 0) when disp_choice = "0001"
-                else program_instr(31 downto 16) when disp_choice = "1010"
-                else program_instr(15 downto 0) when disp_choice = "0010"
-                else data_address(31 downto 16) when disp_choice = "1011"
-                else data_address(15 downto 0) when disp_choice = "0011"
-                else data_stored(31 downto 16) when disp_choice = "1100"
-                else data_stored(15 downto 0) when disp_choice = "0100"
-                else data_retrieved(31 downto 16) when disp_choice = "1101"
-                else data_retrieved(15 downto 0) when disp_choice = "0101"
-                else register_val(31 downto 16) when disp_choice = "1110"
-                else register_val(15 downto 0) when disp_choice = "0110"
-                else X"000" & wr_addr_inp when disp_choice = "0111"
-                else "0000000000000000";
-end display;
+--architecture display of LED_display is
+--begin
+--    led_output <= state(15 downto 0) when disp_choice = "0000"
+--                else program_address(31 downto 16) when disp_choice = "1001"
+--                else program_address(15 downto 0) when disp_choice = "0001"
+--                else program_instr(31 downto 16) when disp_choice = "1010"
+--                else program_instr(15 downto 0) when disp_choice = "0010"
+--                else data_address(31 downto 16) when disp_choice = "1011"
+--                else data_address(15 downto 0) when disp_choice = "0011"
+--                else data_stored(31 downto 16) when disp_choice = "1100"
+--                else data_stored(15 downto 0) when disp_choice = "0100"
+--                else data_retrieved(31 downto 16) when disp_choice = "1101"
+--                else data_retrieved(15 downto 0) when disp_choice = "0101"
+--                else register_val(31 downto 16) when disp_choice = "1110"
+--                else register_val(15 downto 0) when disp_choice = "0110"
+--                else X"000" & wr_addr_inp when disp_choice = "0111"
+--                else "0000000000000000";
+--end display;
 
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
+--library IEEE;
+--use IEEE.STD_LOGIC_1164.ALL;
 
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
-use IEEE.NUMERIC_STD.ALL;
-use ieee.std_logic_unsigned.all;
+---- Uncomment the following library declaration if using
+---- arithmetic functions with Signed or Unsigned values
+--use IEEE.NUMERIC_STD.ALL;
+--use ieee.std_logic_unsigned.all;
 
-entity frequency_divider is
-    port(
-        clk : in std_logic;
-        clk_divided : out std_logic
-    );
-end frequency_divider;
+--entity frequency_divider is
+--    port(
+--        clk : in std_logic;
+--        clk_divided : out std_logic
+--    );
+--end frequency_divider;
 
-architecture frequency_divider_arch of frequency_divider is
-signal clk_counter :  integer := 0;
-signal clk_divided_signal : std_logic;
-begin
-    process(clk)
-    begin
-        if rising_edge(clk) then
-            clk_counter <= clk_counter + 1;
-        end if;
-        if (clk_counter = 500000) then
-            clk_counter <= 0;
-            clk_divided_signal <= not clk_divided_signal;
-        end if;
-    end process;
-    clk_divided <= clk_divided_signal;
-end frequency_divider_arch;
+--architecture frequency_divider_arch of frequency_divider is
+--signal clk_counter :  integer := 0;
+--signal clk_divided_signal : std_logic;
+--begin
+--    process(clk)
+--    begin
+--        if rising_edge(clk) then
+--            clk_counter <= clk_counter + 1;
+--        end if;
+--        if (clk_counter = 500000) then
+--            clk_counter <= 0;
+--            clk_divided_signal <= not clk_divided_signal;
+--        end if;
+--    end process;
+--    clk_divided <= clk_divided_signal;
+--end frequency_divider_arch;
 
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
+--library IEEE;
+--use IEEE.STD_LOGIC_1164.ALL;
 
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
-use IEEE.NUMERIC_STD.ALL;
-use ieee.std_logic_unsigned.all;
+---- Uncomment the following library declaration if using
+---- arithmetic functions with Signed or Unsigned values
+--use IEEE.NUMERIC_STD.ALL;
+--use ieee.std_logic_unsigned.all;
 
-entity debouncer is
-    port(
-        reset_button,step_button,go_button,instr_button,clk_divided,exception_reset : in std_logic;
-        reset_debounced,step_debounced,go_debounced,instr_debounced,exception_reset_debounced : out std_logic
-    );
-end debouncer;
+--entity debouncer is
+--    port(
+--        reset_button,step_button,go_button,instr_button,clk_divided,exception_reset : in std_logic;
+--        reset_debounced,step_debounced,go_debounced,instr_debounced,exception_reset_debounced : out std_logic
+--    );
+--end debouncer;
 
-architecture debouncer_arch of debouncer is
-signal reset_signal, step_signal, go_signal, instr_signal : std_logic := '0';
+--architecture debouncer_arch of debouncer is
+--signal reset_signal, step_signal, go_signal, instr_signal : std_logic := '0';
 
-begin
-    process(clk_divided)
-    begin
-        if rising_edge(clk_divided) then
-            reset_signal <= reset_button;
-            step_signal <= step_button;
-            go_signal <= go_button;
-            instr_signal <= instr_button;
-        end if;
-    end process;
-    instr_debounced <= instr_signal;
-    reset_debounced <= reset_signal;
-    step_debounced <= step_signal;
-    go_debounced <= go_signal;
-end debouncer_arch;
+--begin
+--    process(clk_divided)
+--    begin
+--        if rising_edge(clk_divided) then
+--            reset_signal <= reset_button;
+--            step_signal <= step_button;
+--            go_signal <= go_button;
+--            instr_signal <= instr_button;
+--        end if;
+--    end process;
+--    instr_debounced <= instr_signal;
+--    reset_debounced <= reset_signal;
+--    step_debounced <= step_signal;
+--    go_debounced <= go_signal;
+--end debouncer_arch;
 
 
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
+--library IEEE;
+--use IEEE.STD_LOGIC_1164.ALL;
 
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
-use IEEE.NUMERIC_STD.ALL;
-use ieee.std_logic_unsigned.all;
-entity main is 
-port(
-    clk,reset,step,go,instr,exception_reset:in std_logic;
-    program_select:in std_logic_vector(2 downto 0);
-    disp_choice:in std_logic_vector(3 downto 0);
-    register_select: in std_logic_vector(3 downto 0);
-    LED:out std_logic_vector(15 downto 0);
-    cathode_output : out std_logic_vector(6 downto 0);
-    anode_output : out std_logic_vector(3 downto 0);
-	keypad_row_input : in std_logic_vector(3 downto 0);
-	keypad_driver : out std_logic_vector(3 downto 0)
-);
-end main;
+---- Uncomment the following library declaration if using
+---- arithmetic functions with Signed or Unsigned values
+--use IEEE.NUMERIC_STD.ALL;
+--use ieee.std_logic_unsigned.all;
+--entity main is 
+--port(
+--    clk,reset,step,go,instr,exception_reset:in std_logic;
+--    program_select:in std_logic_vector(2 downto 0);
+--    disp_choice:in std_logic_vector(3 downto 0);
+--    register_select: in std_logic_vector(3 downto 0);
+--    LED:out std_logic_vector(15 downto 0);
+--    cathode_output : out std_logic_vector(6 downto 0);
+--    anode_output : out std_logic_vector(3 downto 0);
+--	keypad_row_input : in std_logic_vector(3 downto 0);
+--	keypad_driver : out std_logic_vector(3 downto 0)
+--);
+--end main;
 
-architecture behavioral of main is
-signal reset_temp,we,step_temp,go_temp,slow_clk,instr_temp,exception_reset_temp: std_logic;
-signal instruction,data_in,add_to_data_m,data_out  : std_logic_vector(31 downto 0); --:= "00000000000000000000000000000000";
-signal add_to_program_m,state_temp,register_val :std_logic_vector(31 downto 0);
-signal state : std_logic_vector(1 downto 0);
-signal wr_addr_inp:std_logic_vector(3 downto 0);
-signal RF_data_out : std_logic_vector(31 downto 0);
+--architecture behavioral of main is
+--signal reset_temp,we,step_temp,go_temp,slow_clk,instr_temp,exception_reset_temp: std_logic;
+--signal instruction,data_in,add_to_data_m,data_out  : std_logic_vector(31 downto 0); --:= "00000000000000000000000000000000";
+--signal add_to_program_m,state_temp,register_val :std_logic_vector(31 downto 0);
+--signal state : std_logic_vector(1 downto 0);
+--signal wr_addr_inp:std_logic_vector(3 downto 0);
+--signal RF_data_out : std_logic_vector(31 downto 0);
 
-begin
-state_temp <= "000000000000000000000000000000" & state(1 downto 0);
-clk_slow:entity work.frequency_divider (frequency_divider_arch) PORT MAP(clk,slow_clk);
-debounce:entity work.debouncer (debouncer_arch) PORT MAP(reset,step,go,instr,slow_clk,exception_reset,reset_temp,step_temp,go_temp,instr_temp,exception_reset_temp);
---cpu:entity work.CPU(CPU_arch) PORT MAP(clk,reset_temp,step_temp,go_temp,instr_temp,program_select,register_select,add_to_program_m,add_to_data_m,data_out,RF_data_out,instruction,state,wr_addr_inp);
-dis:entity work.LED_display(display) PORT MAP(disp_choice,wr_addr_inp,add_to_program_m,instruction,add_to_data_m,data_out,data_in,state_temp,RF_data_out,LED);
-bus_main: entity work.main_bus(main_bus_arch) PORT MAP(
-        clk => clk,
-        reset => reset_temp,
-        exception_reset => exception_reset_temp,
-        step => step_temp,
-        go => go_temp, 
-        instr => instr_temp,
-        register_select => register_select,
-        PC => add_to_program_m,
-        RF_data_out => RF_data_out, 
-        instruction => instruction,
-		cathode_output => cathode_output,
-		anode_output => anode_output,
-		keypad_row_input => keypad_row_input,
-		keypad_driver => keypad_driver
-);
+--begin
+--state_temp <= "000000000000000000000000000000" & state(1 downto 0);
+--clk_slow:entity work.frequency_divider (frequency_divider_arch) PORT MAP(clk,slow_clk);
+--debounce:entity work.debouncer (debouncer_arch) PORT MAP(reset,step,go,instr,slow_clk,exception_reset,reset_temp,step_temp,go_temp,instr_temp,exception_reset_temp);
+----cpu:entity work.CPU(CPU_arch) PORT MAP(clk,reset_temp,step_temp,go_temp,instr_temp,program_select,register_select,add_to_program_m,add_to_data_m,data_out,RF_data_out,instruction,state,wr_addr_inp);
+--dis:entity work.LED_display(display) PORT MAP(disp_choice,wr_addr_inp,add_to_program_m,instruction,add_to_data_m,data_out,data_in,state_temp,RF_data_out,LED);
+--bus_main: entity work.main_bus(main_bus_arch) PORT MAP(
+--        clk => clk,
+--        reset => reset_temp,
+--        exception_reset => exception_reset_temp,
+--        step => step_temp,
+--        go => go_temp, 
+--        instr => instr_temp,
+--        register_select => register_select,
+--        PC => add_to_program_m,
+--        RF_data_out => RF_data_out, 
+--        instruction => instruction,
+--		cathode_output => cathode_output,
+--		anode_output => anode_output,
+--		keypad_row_input => keypad_row_input,
+--		keypad_driver => keypad_driver
+--);
 
-end behavioral;
+--end behavioral;
