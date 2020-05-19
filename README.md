@@ -1,3 +1,3 @@
 # COL216-Assignments
-## Lab Assignment 4
-1)Implemented basic instruction of an ARM processor in VHDL
+This repository contains the assignments for the Computer Architecture course under [Prof. Anshul Kumar](http://www.cse.iitd.ernet.in/~anshul/).
+- Through these assignments, we successfully built a complete ARM processor using VHDL on a Xilinx FPGA (Artix).
